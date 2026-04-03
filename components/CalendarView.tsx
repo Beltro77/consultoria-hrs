@@ -35,7 +35,6 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   const [selected, setSelected] = useState(todayStr())
   const [entryOpen, setEntryOpen] = useState(false)
   const [taskOpen, setTaskOpen] = useState(false)
-  const [tick, setTick] = useState(0)
   const [entries, setEntries] = useState<HourEntry[]>([])
 
   const loadEntries = useCallback(async () => {
@@ -45,7 +44,6 @@ export default function CalendarView({ clients, onDataChange }: Props) {
 
   const refresh = useCallback(async () => {
     await loadEntries()
-    setTick(t => t + 1)
     await onDataChange()
   }, [loadEntries, onDataChange])
 
@@ -53,8 +51,8 @@ export default function CalendarView({ clients, onDataChange }: Props) {
     loadEntries()
   }, [loadEntries])
 
-  function chMonth(d: number) {
-    let m = month + d
+  function chMonth(delta: number) {
+    let m = month + delta
     let y = year
 
     if (m < 0) {
@@ -71,7 +69,7 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }
 
   const today = todayStr()
-  const allEnts = [...INTERNAL_CLIENTS, ...clients]
+  const allEntities = [...INTERNAL_CLIENTS, ...clients]
   const taskMap = buildTaskMap()
 
   function entriesForDateLocal(date: string) {
@@ -79,8 +77,8 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }
 
   const firstDow = (new Date(year, month, 1).getDay() + 6) % 7
-  const daysInMon = new Date(year, month + 1, 0).getDate()
-  const daysInPrev = new Date(year, month, 0).getDate()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, month, 0).getDate()
 
   type Cell = { day: number; kind: 'prev' | 'cur' | 'next'; ds: string }
   const cells: Cell[] = []
@@ -88,14 +86,15 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   for (let i = firstDow - 1; i >= 0; i--) {
     const m = month === 0 ? 12 : month
     const y = month === 0 ? year - 1 : year
+
     cells.push({
-      day: daysInPrev - i,
+      day: daysInPrevMonth - i,
       kind: 'prev',
-      ds: `${y}-${String(m).padStart(2, '0')}-${String(daysInPrev - i).padStart(2, '0')}`,
+      ds: `${y}-${String(m).padStart(2, '0')}-${String(daysInPrevMonth - i).padStart(2, '0')}`,
     })
   }
 
-  for (let i = 1; i <= daysInMon; i++) {
+  for (let i = 1; i <= daysInMonth; i++) {
     cells.push({
       day: i,
       kind: 'cur',
@@ -104,9 +103,10 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }
 
   while (cells.length % 7 !== 0) {
-    const ex = cells.length - daysInMon - firstDow + 1
+    const ex = cells.length - daysInMonth - firstDow + 1
     const m = month === 11 ? 1 : month + 2
     const y = month === 11 ? year + 1 : year
+
     cells.push({
       day: ex,
       kind: 'next',
@@ -117,18 +117,19 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   const dayEntries = entriesForDateLocal(selected)
   const dayTasks = taskMap[selected] || []
   const dayHours = dayEntries.reduce((a, e) => a + e.hours, 0)
-  const pendTasks = dayTasks.filter(t => t.status !== 'realizada').length
+  const pendingTasks = dayTasks.filter(t => t.status !== 'realizada').length
   const doneTasks = dayTasks.filter(t => t.status === 'realizada').length
-  const dispDate = new Date(`${selected}T12:00:00`).toLocaleDateString('es-AR', {
+
+  const displayDate = new Date(`${selected}T12:00:00`).toLocaleDateString('es-AR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
 
-  function cycleStatus(t: Task) {
-    const idx = TASK_STATUS_CYCLE.indexOf(t.status)
+  function cycleStatus(task: Task) {
+    const idx = TASK_STATUS_CYCLE.indexOf(task.status)
     const next = TASK_STATUS_CYCLE[(idx + 1) % TASK_STATUS_CYCLE.length]
-    upsertTask({ ...t, status: next })
+    upsertTask({ ...task, status: next })
     refresh()
   }
 
@@ -170,27 +171,27 @@ export default function CalendarView({ clients, onDataChange }: Props) {
       <div className="grid grid-cols-7 gap-0.5 mb-3">
         {cells.map((cell, idx) => {
           const ents = entriesForDateLocal(cell.ds)
-          const dtasks = taskMap[cell.ds] || []
+          const tasksForDay = taskMap[cell.ds] || []
           const isToday = cell.ds === today
-          const isSel = cell.ds === selected
-          const isCur = cell.kind === 'cur'
-          const pend = dtasks.filter(t => t.status !== 'realizada').length
-          const done = dtasks.filter(t => t.status === 'realizada').length
+          const isSelected = cell.ds === selected
+          const isCurrentMonth = cell.kind === 'cur'
+          const pending = tasksForDay.filter(t => t.status !== 'realizada').length
+          const done = tasksForDay.filter(t => t.status === 'realizada').length
 
           return (
             <button
               key={idx}
               onClick={() => setSelected(cell.ds)}
               className={`min-h-[54px] rounded-lg p-1 flex flex-col items-center transition-all border ${
-                isSel ? 'border-accent bg-stone-50' : 'border-transparent hover:bg-stone-50'
+                isSelected ? 'border-accent bg-stone-50' : 'border-transparent hover:bg-stone-50'
               }`}
-              style={isSel ? { borderColor: 'var(--accent)' } : {}}
+              style={isSelected ? { borderColor: 'var(--accent)' } : {}}
             >
               <span
                 className={`text-xs w-5 h-5 flex items-center justify-center rounded-full mb-0.5 ${
                   isToday
                     ? 'text-white font-medium'
-                    : isCur
+                    : isCurrentMonth
                     ? 'text-stone-700'
                     : 'text-stone-300'
                 }`}
@@ -201,12 +202,13 @@ export default function CalendarView({ clients, onDataChange }: Props) {
 
               {ents.length > 0 && (
                 <div className="flex gap-0.5 mb-0.5">
-                  {ents.slice(0, 3).map(e => {
-                    const c = allEnts.find(x => x.id === e.clientId)
-                    const col = c ? clientColor(c) : { bg: '#d6d3d1' }
+                  {ents.slice(0, 3).map(entry => {
+                    const entity = allEntities.find(x => x.id === entry.clientId)
+                    const col = entity ? clientColor(entity) : { bg: '#d6d3d1' }
+
                     return (
                       <span
-                        key={e.id}
+                        key={entry.id}
                         className="w-1.5 h-1.5 rounded-full"
                         style={{ background: col.bg }}
                       />
@@ -215,17 +217,15 @@ export default function CalendarView({ clients, onDataChange }: Props) {
                 </div>
               )}
 
-              {(pend > 0 || done > 0) && (
+              {(pending > 0 || done > 0) && (
                 <div className="flex gap-0.5">
-                  {pend > 0 && (
+                  {pending > 0 && (
                     <span
                       className="w-1.5 h-1.5 rounded-full"
                       style={{ background: 'var(--accent)' }}
                     />
                   )}
-                  {done > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-stone-300" />
-                  )}
+                  {done > 0 && <span className="w-1.5 h-1.5 rounded-full bg-stone-300" />}
                 </div>
               )}
             </button>
@@ -237,9 +237,10 @@ export default function CalendarView({ clients, onDataChange }: Props) {
         <div className="p-4 border-b border-stone-100">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-[15px] font-medium text-stone-800 capitalize">{dispDate}</h3>
+              <h3 className="text-[15px] font-medium text-stone-800 capitalize">{displayDate}</h3>
               <p className="text-sm text-stone-400">{dayHours.toFixed(1)} hs registradas</p>
             </div>
+
             <button
               onClick={() => setEntryOpen(true)}
               className="px-3 py-1.5 rounded-full border border-stone-200 text-sm text-stone-600 hover:bg-stone-50"
@@ -252,12 +253,12 @@ export default function CalendarView({ clients, onDataChange }: Props) {
             {!dayEntries.length ? (
               <p className="text-sm text-stone-400">Sin horas registradas</p>
             ) : (
-              dayEntries.map(e => {
-                const c = allEnts.find(x => x.id === e.clientId)
-                const col = c ? clientColor(c) : { bg: '#d6d3d1', fg: '#57534e' }
+              dayEntries.map(entry => {
+                const entity = allEntities.find(x => x.id === entry.clientId)
+                const col = entity ? clientColor(entity) : { bg: '#d6d3d1', fg: '#57534e' }
 
                 return (
-                  <div key={e.id} className="flex items-start gap-3">
+                  <div key={entry.id} className="flex items-start gap-3">
                     <span
                       className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
                       style={{ background: col.bg }}
@@ -265,19 +266,20 @@ export default function CalendarView({ clients, onDataChange }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between gap-3">
                         <p className="text-[15px] font-medium text-stone-800">
-                          {c?.name || 'Sin cliente'}
+                          {entity?.name || 'Sin cliente'}
                         </p>
-                        <p className="text-[15px] font-medium text-stone-800">
-                          {e.hours}h
-                        </p>
+                        <p className="text-[15px] font-medium text-stone-800">{entry.hours}h</p>
                       </div>
-                      <p className="text-sm text-stone-400">{e.task}</p>
-                      {e.detail && (
-                        <p className="text-sm italic text-stone-400">{e.detail}</p>
+
+                      <p className="text-sm text-stone-400">{entry.task}</p>
+
+                      {entry.detail && (
+                        <p className="text-sm italic text-stone-400">{entry.detail}</p>
                       )}
                     </div>
+
                     <button
-                      onClick={() => delEntry(e.id)}
+                      onClick={() => delEntry(entry.id)}
                       className="text-stone-300 hover:text-stone-500 text-lg leading-none"
                     >
                       ×
@@ -294,9 +296,10 @@ export default function CalendarView({ clients, onDataChange }: Props) {
             <div>
               <p className="text-xs uppercase tracking-[0.16em] text-stone-400">Tareas</p>
               <p className="text-sm text-stone-400">
-                {pendTasks} pendientes, {doneTasks} realizada{doneTasks === 1 ? '' : 's'}
+                {pendingTasks} pendientes, {doneTasks} realizada{doneTasks === 1 ? '' : 's'}
               </p>
             </div>
+
             <button
               onClick={() => setTaskOpen(true)}
               className="w-8 h-8 rounded-full border border-dashed border-amber-400 text-amber-500 hover:bg-amber-50"
@@ -309,28 +312,32 @@ export default function CalendarView({ clients, onDataChange }: Props) {
             <p className="text-sm text-stone-400 text-center py-4">Sin tareas para este día</p>
           ) : (
             <div className="space-y-3">
-              {dayTasks.map(t => (
-                <div key={t.id} className="flex items-start gap-3">
-                  <StatusButton status={t.status} onClick={() => cycleStatus(t)} />
+              {dayTasks.map(task => (
+                <div key={task.id} className="flex items-start gap-3">
+                  <StatusButton status={task.status} onClick={() => cycleStatus(task)} />
+
                   <div className="flex-1 min-w-0">
                     <p
                       className={`text-[15px] ${
-                        t.status === 'realizada'
+                        task.status === 'realizada'
                           ? 'line-through text-stone-300'
                           : 'text-stone-700'
                       }`}
                     >
-                      {t.title}
+                      {task.title}
                     </p>
-                    {t.desc && (
-                      <p className="text-sm text-stone-400">{t.desc}</p>
+
+                    {task.desc && (
+                      <p className="text-sm text-stone-400">{task.desc}</p>
                     )}
+
                     <div className="mt-1">
-  <Badge label={t.status} />
-</div>
+                      <Badge label={task.status} />
+                    </div>
                   </div>
+
                   <button
-                    onClick={() => delTask(t.id)}
+                    onClick={() => delTask(task.id)}
                     className="text-stone-300 hover:text-stone-500 text-lg leading-none"
                   >
                     ×
@@ -342,23 +349,26 @@ export default function CalendarView({ clients, onDataChange }: Props) {
         </div>
       </div>
 
-<EntryModal
-  open={taskOpen}
-  onClose={() => setTaskOpen(false)}
-  defaultDate={selected}
-  clients={clients}
-  onSaved={() => {
-    setTaskOpen(false)
-    refresh()
-  }}
-/>
+      <EntryModal
+        open={entryOpen}
+        onClose={() => setEntryOpen(false)}
+        defaultDate={selected}
+        clients={clients}
+        onSaved={async () => {
+          setEntryOpen(false)
+          await refresh()
+        }}
+      />
 
-    <TaskModal
-  open={taskOpen}
-  onClose={() => setTaskOpen(false)}
-  defaultDate={selected}
-  onSaved={() => {
-    setTaskOpen(false)
-    refresh()
-  }}
-/>
+      <TaskModal
+        open={taskOpen}
+        onClose={() => setTaskOpen(false)}
+        defaultDate={selected}
+        onSaved={() => {
+          setTaskOpen(false)
+          refresh()
+        }}
+      />
+    </div>
+  )
+}

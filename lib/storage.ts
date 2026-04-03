@@ -27,7 +27,6 @@ function persist(key: string, data: unknown) {
   }
 }
 
-// ─── Clients (Supabase) ───────────────────────────────────────────────────────
 export async function getClients(): Promise<Client[]> {
   const { data, error } = await supabase
     .from('clients')
@@ -39,7 +38,12 @@ export async function getClients(): Promise<Client[]> {
     return []
   }
 
-  return (data as Client[]) || []
+  return (data || []).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    rate: c.rate ?? undefined,
+    colorIndex: c.color_index ?? 0,
+  }))
 }
 
 export async function upsertClient(c: Client): Promise<void> {
@@ -47,7 +51,7 @@ export async function upsertClient(c: Client): Promise<void> {
     id: c.id,
     name: c.name,
     rate: c.rate ?? null,
-    color_index: c.color_index ?? 0,
+    color_index: c.colorIndex ?? 0,
   }
 
   const { error } = await supabase
@@ -70,7 +74,6 @@ export async function removeClient(id: string): Promise<void> {
   }
 }
 
-// ─── Hour entries (localStorage por ahora) ────────────────────────────────────
 export function getEntries(): HourEntry[] {
   return load<HourEntry>(K.entries)
 }
@@ -128,7 +131,6 @@ export function entriesForPeriod(
   })
 }
 
-// ─── Tasks (localStorage por ahora) ───────────────────────────────────────────
 export function getTasks(): Task[] {
   return load<Task>(K.tasks)
 }
@@ -163,7 +165,6 @@ export function buildTaskMap(): Record<string, Task[]> {
   return map
 }
 
-// ─── Recurring definitions (localStorage por ahora) ───────────────────────────
 export function getRecurDefs(): RecurDef[] {
   return load<RecurDef>(K.recurDefs)
 }
@@ -244,7 +245,7 @@ export async function getEntriesDB(): Promise<HourEntry[]> {
     return []
   }
 
-  return (data || []).map(e => ({
+  return (data || []).map((e: any) => ({
     id: e.id,
     clientId: e.client_id,
     task: e.task,
@@ -275,7 +276,7 @@ export async function upsertEntryDB(e: HourEntry): Promise<void> {
   }
 }
 
-export async function removeEntryDB(id) {
+export async function removeEntryDB(id: string): Promise<void> {
   const { error } = await supabase
     .from('hour_entries')
     .delete()
