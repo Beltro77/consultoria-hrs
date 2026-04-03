@@ -234,7 +234,7 @@ export function syncRecurring(): void {
   }
 }
 
-export async function getEntriesDB() {
+export async function getEntriesDB(): Promise<HourEntry[]> {
   const { data, error } = await supabase
     .from('hour_entries')
     .select('*')
@@ -244,17 +244,18 @@ export async function getEntriesDB() {
     return []
   }
 
-  return data.map(e => ({
+  return (data || []).map(e => ({
     id: e.id,
     clientId: e.client_id,
     task: e.task,
-    detail: e.detail,
+    detail: e.detail ?? '',
     hours: e.hours,
     date: e.date,
+    createdAt: e.created_at ?? new Date().toISOString(),
   }))
 }
 
-export async function upsertEntryDB(e) {
+export async function upsertEntryDB(e: HourEntry): Promise<void> {
   const payload = {
     id: e.id,
     client_id: e.clientId,
@@ -262,6 +263,7 @@ export async function upsertEntryDB(e) {
     detail: e.detail ?? null,
     hours: e.hours,
     date: e.date,
+    created_at: e.createdAt ?? new Date().toISOString(),
   }
 
   const { error } = await supabase
