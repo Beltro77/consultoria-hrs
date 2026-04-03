@@ -1,16 +1,8 @@
-/**
- * storage.ts
- *
- * All data access goes through this module.
- * In Step 2 (Supabase) you replace only this file.
- * The rest of the app calls the same function signatures.
- */
-
+import { supabase } from './supabase'
 import type { Client, HourEntry, Task, RecurDef, Period } from './types'
-import { toDateStr, nextWorkday, effectiveDate, isWeekend, todayStr } from './types'
+import { toDateStr, effectiveDate } from './types'
 
 const K = {
-  clients: 'chrs_cli',
   entries: 'chrs_ent',
   tasks: 'chrs_tasks',
   recurDefs: 'chrs_recur',
@@ -35,29 +27,50 @@ function persist(key: string, data: unknown) {
   }
 }
 
-// ─── Clients ──────────────────────────────────────────────────────────────────
-export function getClients(): Client[] {
-  return load<Client>(K.clients)
-}
+// ─── Clients (Supabase) ───────────────────────────────────────────────────────
+export async function getClients(): Promise<Client[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .order('name', { ascending: true })
 
-export function upsertClient(c: Client): void {
-  const all = getClients()
-  const idx = all.findIndex(x => x.id === c.id)
-
-  if (idx >= 0) {
-    all[idx] = c
-  } else {
-    all.push(c)
+  if (error) {
+    console.error('Error fetching clients:', error)
+    return []
   }
 
-  persist(K.clients, all)
+  return (data as Client[]) || []
 }
 
-export function removeClient(id: string): void {
-  persist(K.clients, getClients().filter(c => c.id !== id))
+export async function upsertClient(c: Client): Promise<void> {
+  const payload = {
+    id: c.id,
+    name: c.name,
+    rate: c.rate ?? null,
+    color_index: c.color_index ?? 0,
+  }
+
+  const { error } = await supabase
+    .from('clients')
+    .upsert(payload, { onConflict: 'id' })
+
+  if (error) {
+    console.error('Error upserting client:', error)
+  }
 }
 
-// ─── Hour entries ─────────────────────────────────────────────────────────────
+export async function removeClient(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting client:', error)
+  }
+}
+
+// ─── Hour entries (localStorage por ahora) ────────────────────────────────────
 export function getEntries(): HourEntry[] {
   return load<HourEntry>(K.entries)
 }
@@ -90,7 +103,11 @@ export function entriesForMonth(month: number, year: number): HourEntry[] {
   })
 }
 
-export function entriesForPeriod(period: Period, refMonth: number, refYear: number): HourEntry[] {
+export function entriesForPeriod(
+  period: Period,
+  refMonth: number,
+  refYear: number
+): HourEntry[] {
   return getEntries().filter(e => {
     const [y, m] = e.date.split('-').map(Number)
     const monthIndex = m - 1
@@ -111,7 +128,7 @@ export function entriesForPeriod(period: Period, refMonth: number, refYear: numb
   })
 }
 
-// ─── Tasks ────────────────────────────────────────────────────────────────────
+// ─── Tasks (localStorage por ahora) ───────────────────────────────────────────
 export function getTasks(): Task[] {
   return load<Task>(K.tasks)
 }
@@ -133,7 +150,6 @@ export function removeTask(id: string): void {
   persist(K.tasks, getTasks().filter(t => t.id !== id))
 }
 
-/** Returns task map: dateStr → Task[] that should appear on that date */
 export function buildTaskMap(): Record<string, Task[]> {
   syncRecurring()
   const map: Record<string, Task[]> = {}
@@ -147,7 +163,7 @@ export function buildTaskMap(): Record<string, Task[]> {
   return map
 }
 
-// ─── Recurring definitions ────────────────────────────────────────────────────
+// ─── Recurring definitions (localStorage por ahora) ───────────────────────────
 export function getRecurDefs(): RecurDef[] {
   return load<RecurDef>(K.recurDefs)
 }
@@ -165,7 +181,6 @@ export function upsertRecurDef(def: RecurDef): void {
   persist(K.recurDefs, all)
 }
 
-/** Generate recurring task instances for a ±7 to +45 day window */
 export function syncRecurring(): void {
   const defs = getRecurDefs()
   const tasks = getTasks()
@@ -216,5 +231,55 @@ export function syncRecurring(): void {
 
   if (newTasks.length) {
     persist(K.tasks, [...tasks, ...newTasks])
+  }
+}
+
+export async function getEntriesDB() {
+  const { data, error } = await supabase
+    .from('hour_entries')
+    .select('*')
+
+  if (error) {
+    console.error('Error fetching entries:', error)
+    return []
+  }
+
+  return data.map(e => ({
+    id: e.id,
+    clientId: e.client_id,
+    task: e.task,
+    detail: e.detail,
+    hours: e.hours,
+    date: e.date,
+  }))
+}
+
+export async function upsertEntryDB(e) {
+  const payload = {
+    id: e.id,
+    client_id: e.clientId,
+    task: e.task,
+    detail: e.detail ?? null,
+    hours: e.hours,
+    date: e.date,
+  }
+
+  const { error } = await supabase
+    .from('hour_entries')
+    .upsert(payload)
+
+  if (error) {
+    console.error('Error upserting entry:', error)
+  }
+}
+
+export async function removeEntryDB(id) {
+  const { error } = await supabase
+    .from('hour_entries')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting entry:', error)
   }
 }
