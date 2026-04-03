@@ -4,9 +4,8 @@ import './globals.css'
 
 const dm = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['400', '500'] })
 
-export const metadata: Metadata = {
-  title: 'Consultoria Hrs',
-  description: 'Seguimiento de horas y tareas',
+ export const metadata = {title: 'Catalizar HS',
+  description: 'App de horas Catalizar',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Hrs' },
 }
@@ -16,7 +15,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#f5f5f2',
+  themeColor: '#0b0b0b',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

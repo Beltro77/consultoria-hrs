@@ -1,10 +1,10 @@
 {
-  "name": "Consultoria Hrs",
-  "short_name": "Hrs",
+  "name": "Catalizar Hrs",
+  "short_name": "Catalizar",
   "description": "Seguimiento de horas y tareas de consultoría",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f5f2",
+  "background_color": "#0b0b0b",
   "theme_color": "#1D9E75",
   "orientation": "portrait",
   "icons": [
