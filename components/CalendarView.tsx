@@ -342,16 +342,16 @@ export default function CalendarView({ clients, onDataChange }: Props) {
         </div>
       </div>
 
-      <EntryModal
-        open={entryOpen}
-        onClose={() => setEntryOpen(false)}
-        defaultDate={selected}
-        clients={clients}
-        onSaved={async () => {
-          setEntryOpen(false)
-          await refresh()
-        }}
-      />
+<EntryModal
+  open={taskOpen}
+  onClose={() => setTaskOpen(false)}
+  defaultDate={selected}
+  clients={clients}
+  onSaved={() => {
+    setTaskOpen(false)
+    refresh()
+  }}
+/>
 
       <TaskModal
         open={taskOpen}
