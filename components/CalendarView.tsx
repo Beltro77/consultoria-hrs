@@ -353,15 +353,12 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }}
 />
 
-      <TaskModal
-        open={taskOpen}
-        onClose={() => setTaskOpen(false)}
-        date={selected}
-        onSaved={() => {
-          setTaskOpen(false)
-          refresh()
-        }}
-      />
-    </div>
-  )
-}
+    <TaskModal
+  open={taskOpen}
+  onClose={() => setTaskOpen(false)}
+  defaultDate={selected}
+  onSaved={() => {
+    setTaskOpen(false)
+    refresh()
+  }}
+/>
