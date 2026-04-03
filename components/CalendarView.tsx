@@ -326,8 +326,8 @@ export default function CalendarView({ clients, onDataChange }: Props) {
                       <p className="text-sm text-stone-400">{t.desc}</p>
                     )}
                     <div className="mt-1">
-                      <Badge>{t.status}</Badge>
-                    </div>
+  <Badge label={t.status} />
+</div>
                   </div>
                   <button
                     onClick={() => delTask(t.id)}
