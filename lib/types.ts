@@ -117,7 +117,7 @@ export const INTERNAL_CLIENT_SUBTOPIC_NAMES = new Set(INTERNAL_CLIENT_PRESETS.ma
 export const INTERNAL_CLIENT_SYNONYMS = new Set(['Administración', 'Desarrollo', 'Desarrollo herramientas'])
 export const INTERNAL_CLIENT_NAME_ALIASES = new Set(Array.from(INTERNAL_CLIENT_SYNONYMS).concat(INTERNAL_CLIENT_ROOT_NAME))
 export const INTERNAL_CLIENT_NAMES = new Set([INTERNAL_CLIENT_ROOT_NAME])
-export const INTERNAL_CLIENT_SUBTOPICS = ['Administración', 'Desarrollo'] as const
+export const INTERNAL_CLIENT_SUBTOPICS = ['Administración', 'Desarrollo', 'Marketing', 'Comercial'] as const
 
 export function isInternalClientName(name: string) {
   return INTERNAL_CLIENT_SYNONYMS.has(name)

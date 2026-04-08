@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { clientColor, type Client, type HourEntry } from '@/lib/types'
+import { clientColor, INTERNAL_CLIENT_ROOT_NAME, type Client, type HourEntry } from '@/lib/types'
 import { useHourEntries } from '@/lib/hooks/useHourEntries'
+import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { Tag } from '@/components/ui'
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
 export default function HistorialView({ clients, onDataChange }: Props) {
   const [filter, setFilter] = useState('all')
   const { entries, refresh, removeEntry } = useHourEntries()
+  const catalizar = clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
 
   const allEnts = clients
 
@@ -34,7 +37,12 @@ export default function HistorialView({ clients, onDataChange }: Props) {
 
   const filtered = (filter === 'all'
     ? entries
-    : entries.filter(e => e.clientId === filter)
+    : entries.filter(e => {
+      if (filter === catalizar?.id) {
+        return e.clientId === filter || e.subtopicId === filter || subtopics.some(s => s.id === e.clientId)
+      }
+      return e.clientId === filter
+    })
   )
     .slice()
     .sort((a, b) => `${b.date}`.localeCompare(`${a.date}`))
@@ -61,9 +69,15 @@ export default function HistorialView({ clients, onDataChange }: Props) {
         <p className="text-sm text-stone-400 text-center py-12">Sin registros</p>
       ) : (
         filtered.map(entry => {
+          const entrySubtopic = entry.subtopicId
+            ? subtopics.find(s => s.id === entry.subtopicId)
+            : subtopics.find(s => s.id === entry.clientId)
           const ent = allEnts.find(c => c.id === entry.clientId)
-          const col = ent
-            ? clientColor(ent)
+          const entity = entrySubtopic
+            ? { id: entrySubtopic.id, name: entrySubtopic.name, colorIndex: 2 }
+            : ent
+          const col = entity
+            ? clientColor(entity)
             : { dot: '#d6d3d1', bg: '#f5f5f4', fg: '#57534e' }
 
           return (
@@ -78,7 +92,7 @@ export default function HistorialView({ clients, onDataChange }: Props) {
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-stone-800">
-                    {ent?.name ?? entry.clientId}
+                    {entrySubtopic?.name ?? ent?.name ?? entry.clientId}
                   </p>
                   <p className="text-xs text-stone-400">{entry.task}</p>
                   {entry.detail && (

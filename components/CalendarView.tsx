@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import {
   MONTHS_FULL,
   MONTHS_SHORT,
+  INTERNAL_CLIENT_ROOT_NAME,
   clientColor,
   todayStr,
   TASK_STATUS_CYCLE,
@@ -12,6 +13,7 @@ import {
   type HourEntry,
 } from '@/lib/types'
 import { useHourEntries } from '@/lib/hooks/useHourEntries'
+import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { useTasks } from '@/lib/hooks/useTasks'
 import { StatusButton, Badge } from '@/components/ui'
 import EntryModal from '@/components/modals/EntryModal'
@@ -71,8 +73,19 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }
 
   const today = todayStr()
+  const catalizar = clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
   const allEntities = clients
   const taskMap = buildTaskMap(tasks)
+
+  function resolveEntryEntity(entry: HourEntry) {
+    const entrySubtopic = entry.subtopicId
+      ? subtopics.find(s => s.id === entry.subtopicId)
+      : subtopics.find(s => s.id === entry.clientId)
+
+    return allEntities.find(x => x.id === entry.clientId)
+      ?? (entrySubtopic ? { id: entrySubtopic.id, name: entrySubtopic.name, colorIndex: 2 } : undefined)
+  }
 
   function entriesForDateLocal(date: string) {
     return entries.filter(e => e.date === date)
@@ -204,7 +217,7 @@ export default function CalendarView({ clients, onDataChange }: Props) {
               {ents.length > 0 && (
                 <div className="flex gap-0.5 mb-0.5">
                   {ents.slice(0, 3).map(entry => {
-                    const entity = allEntities.find(x => x.id === entry.clientId)
+                    const entity = resolveEntryEntity(entry)
                     const col = entity ? clientColor(entity) : { bg: '#d6d3d1' }
 
                     return (
@@ -255,7 +268,7 @@ export default function CalendarView({ clients, onDataChange }: Props) {
               <p className="text-sm text-stone-400">Sin horas registradas</p>
             ) : (
               dayEntries.map(entry => {
-                const entity = allEntities.find(x => x.id === entry.clientId)
+                const entity = resolveEntryEntity(entry)
                 const col = entity ? clientColor(entity) : { bg: '#d6d3d1', fg: '#57534e' }
 
                 return (

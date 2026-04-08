@@ -198,8 +198,8 @@ export async function ensureInternalSubtopics(): Promise<void> {
     return
   }
 
-  // Ensure default subtopics: Administración, Desarrollo
-  const defaultSubtopics = ['Administración', 'Desarrollo']
+  // Ensure default subtopics: Administración, Desarrollo, Marketing, Comercial
+  const defaultSubtopics = ['Administración', 'Desarrollo', 'Marketing', 'Comercial']
 
   for (const subtopicName of defaultSubtopics) {
     const { data: existing, error: fetchError } = await supabase

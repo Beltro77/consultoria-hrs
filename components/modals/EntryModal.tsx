@@ -79,7 +79,7 @@ export default function EntryModal({
 
     try {
       await upsertEntry({
-        clientId: isCatalizarSelected ? selectedSubtopicId : selectedClientId,
+        clientId: selectedClientId,
         subtopicId: isCatalizarSelected ? selectedSubtopicId : undefined,
         taskName: task,
         detail: detail.trim(),

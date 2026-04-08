@@ -11,6 +11,7 @@ import {
   type Period,
 } from '@/lib/types'
 import { useHourEntries } from '@/lib/hooks/useHourEntries'
+import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import {
   Avatar,
   Card,
@@ -65,6 +66,8 @@ export default function DashboardView({ clients }: Props) {
   const donutRef = useRef<HTMLCanvasElement>(null)
   const { entries } = useHourEntries()
   const allEnts = clients
+  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
 
   useEffect(() => {
     if (tab !== 'mes') return
@@ -75,7 +78,10 @@ export default function DashboardView({ clients }: Props) {
 
     const data = entriesForMonth(entries, month, year)
     const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-    const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
+    const internalIds = new Set([
+      ...(catalizar ? [catalizar.id] : []),
+      ...subtopics.map(s => s.id),
+    ])
     const byClient: Record<string, number> = {}
     data.forEach(entry => {
       const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
@@ -193,9 +199,14 @@ function MesTab({
   allEnts: Client[]
   entries: any[]
 }) {
+  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
   const data = entriesForMonth(entries, month, year)
   const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
+  const internalIds = new Set([
+    ...(catalizar ? [catalizar.id] : []),
+    ...subtopics.map(s => s.id),
+  ])
   const clientTotal = data.filter(entry => !internalIds.has(entry.clientId)).reduce((sum, entry) => sum + entry.hours, 0)
   const internalTotal = total - clientTotal
   const activeDays = new Set(data.map(entry => entry.date)).size
@@ -308,8 +319,13 @@ function ClienteTab({
   allEnts: Client[]
   entries: any[]
 }) {
+  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
   const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
+  const internalIds = new Set([
+    ...(catalizar ? [catalizar.id] : []),
+    ...subtopics.map(s => s.id),
+  ])
   const byClient: Record<string, { hours: number; tasks: Record<string, number> }> = {}
   data.forEach(entry => {
     const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
@@ -391,8 +407,13 @@ function ActividadTab({
   allEnts: Client[]
   entries: any[]
 }) {
+  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
   const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
+  const internalIds = new Set([
+    ...(catalizar ? [catalizar.id] : []),
+    ...subtopics.map(s => s.id),
+  ])
   const byTask: Record<string, number> = {}
   const byClient: Record<string, Record<string, number>> = {}
 

@@ -29,7 +29,9 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
 
   const catalizarHours = subtopics
     .reduce((sum, subtopic) => {
-      const h = entries.filter(e => e.clientId === subtopic.id).reduce((a, e) => a + e.hours, 0)
+      const h = entries
+        .filter(e => e.clientId === catalizar?.id && e.subtopicId === subtopic.id)
+        .reduce((a, e) => a + e.hours, 0)
       return sum + h
     }, 0)
 
