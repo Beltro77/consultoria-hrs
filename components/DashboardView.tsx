@@ -5,7 +5,6 @@ import {
   MONTHS_FULL,
   MONTHS_SHORT,
   INTERNAL_CLIENT_ROOT_NAME,
-  INTERNAL_CLIENT_SUBTOPIC_NAMES,
   clientColor,
   ENTRY_TASK_COLORS,
   type Client,
@@ -76,7 +75,7 @@ export default function DashboardView({ clients }: Props) {
 
     const data = entriesForMonth(entries, month, year)
     const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-    const internalIds = new Set(allEnts.filter(c => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(c.name)).map(c => c.id))
+    const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
     const byClient: Record<string, number> = {}
     data.forEach(entry => {
       const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
@@ -196,7 +195,7 @@ function MesTab({
 }) {
   const data = entriesForMonth(entries, month, year)
   const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-  const internalIds = new Set(allEnts.filter(c => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(c.name)).map(c => c.id))
+  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
   const clientTotal = data.filter(entry => !internalIds.has(entry.clientId)).reduce((sum, entry) => sum + entry.hours, 0)
   const internalTotal = total - clientTotal
   const activeDays = new Set(data.map(entry => entry.date)).size
@@ -310,7 +309,7 @@ function ClienteTab({
   entries: any[]
 }) {
   const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set(allEnts.filter(c => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(c.name)).map(c => c.id))
+  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
   const byClient: Record<string, { hours: number; tasks: Record<string, number> }> = {}
   data.forEach(entry => {
     const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
@@ -393,7 +392,7 @@ function ActividadTab({
   entries: any[]
 }) {
   const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set(allEnts.filter(c => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(c.name)).map(c => c.id))
+  const internalIds = new Set(allEnts.filter(c => c.name === INTERNAL_CLIENT_ROOT_NAME).map(c => c.id))
   const byTask: Record<string, number> = {}
   const byClient: Record<string, Record<string, number>> = {}
 

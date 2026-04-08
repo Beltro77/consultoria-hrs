@@ -43,6 +43,7 @@ export type ClientInput = Omit<Client, 'id'> & {
 export interface HourEntry {
   id: string
   clientId: string
+  subtopicId?: string | null
   taskId?: string | null
   taskName?: string
   task?: string
@@ -53,6 +54,18 @@ export interface HourEntry {
 }
 
 export type HourEntryInput = Omit<HourEntry, 'id' | 'createdAt'> & {
+  id?: string
+  createdAt?: string
+}
+
+export interface Subtopic {
+  id: string
+  name: string
+  clientId: string
+  createdAt: string
+}
+
+export type SubtopicInput = Omit<Subtopic, 'id' | 'createdAt'> & {
   id?: string
   createdAt?: string
 }

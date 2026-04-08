@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { ensureInternalClients } from '@/lib/services/clients.service'
+import { ensureInternalClients, ensureInternalSubtopics } from '@/lib/services/clients.service'
 import { useClients } from '@/lib/hooks/useClients'
 import CalendarView from '@/components/CalendarView'
 import DashboardView from '@/components/DashboardView'
@@ -109,9 +109,10 @@ function AuthenticatedApp() {
     const initInternalClients = async () => {
       try {
         await ensureInternalClients()
+        await ensureInternalSubtopics()
         await refresh()
       } catch (error) {
-        console.error('Error ensuring internal clients:', error)
+        console.error('Error ensuring internal structure:', error)
       } finally {
         setReady(true)
       }

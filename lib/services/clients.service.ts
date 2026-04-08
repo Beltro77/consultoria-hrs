@@ -2,7 +2,6 @@ import { supabase, getCurrentProfile } from '@/lib/supabase'
 import {
   INTERNAL_CLIENT_NAME_ALIASES,
   INTERNAL_CLIENT_PRESETS,
-  INTERNAL_CLIENT_SUBTOPIC_NAMES,
   INTERNAL_CLIENT_ROOT_NAME,
   isInternalClientName,
   type Client,
@@ -173,6 +172,65 @@ export async function ensureInternalClients(): Promise<void> {
 
     if (insertError) {
       console.error('Error inserting internal client:', preset.name, insertError)
+      throw insertError
+    }
+  }
+}
+
+export async function ensureInternalSubtopics(): Promise<void> {
+  const profile = await getCurrentProfile()
+
+  // Find Catalizar client
+  const { data: catalizar, error: catError } = await supabase
+    .from(TABLE)
+    .select('*')
+    .eq('owner_id', profile.id)
+    .eq('name', INTERNAL_CLIENT_ROOT_NAME)
+    .maybeSingle()
+
+  if (catError) {
+    console.error('Error fetching Catalizar client:', catError)
+    throw catError
+  }
+
+  if (!catalizar) {
+    console.warn('Catalizar client not found, skipping subtopic creation')
+    return
+  }
+
+  // Ensure default subtopics: Administración, Desarrollo
+  const defaultSubtopics = ['Administración', 'Desarrollo']
+
+  for (const subtopicName of defaultSubtopics) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('client_subtopics')
+      .select('*')
+      .eq('client_id', catalizar.id)
+      .eq('name', subtopicName)
+      .eq('owner_id', profile.id)
+      .maybeSingle()
+
+    if (fetchError) {
+      console.error('Error fetching subtopic:', subtopicName, fetchError)
+      throw fetchError
+    }
+
+    if (existing) {
+      // Already exists, skip
+      continue
+    }
+
+    // Create it
+    const { error: insertError } = await supabase
+      .from('client_subtopics')
+      .insert({
+        name: subtopicName,
+        client_id: catalizar.id,
+        owner_id: profile.id,
+      })
+
+    if (insertError) {
+      console.error('Error inserting subtopic:', subtopicName, insertError)
       throw insertError
     }
   }

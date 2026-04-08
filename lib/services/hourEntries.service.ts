@@ -9,6 +9,7 @@ function mapHourEntry(row: any): HourEntry {
   return {
     id: row.id,
     clientId: row.client_id,
+    subtopicId: row.subtopic_id ?? undefined,
     taskId: row.task_id ?? undefined,
     taskName,
     task: taskName,
@@ -54,6 +55,7 @@ export async function upsertEntry(entry: HourEntryInput): Promise<void> {
   const payload: {
     id?: string
     client_id: string
+    subtopic_id: string | null
     task_id: string | null
     task_name: string | null
     detail: string | null
@@ -63,6 +65,7 @@ export async function upsertEntry(entry: HourEntryInput): Promise<void> {
     owner_id: string
   } = {
     client_id: entry.clientId,
+    subtopic_id: entry.subtopicId ?? null,
     task_id: entry.taskId ?? null,
     task_name: entry.taskName ?? entry.task ?? null,
     detail: entry.detail ?? null,

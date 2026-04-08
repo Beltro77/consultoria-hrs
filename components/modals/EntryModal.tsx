@@ -13,11 +13,11 @@ import {
 import {
   ENTRY_TASK_TYPES,
   INTERNAL_CLIENT_ROOT_NAME,
-  INTERNAL_CLIENT_SUBTOPIC_NAMES,
   type Client,
   type EntryTaskType,
 } from '@/lib/types'
 import { upsertEntry } from '@/lib/services/hourEntries.service'
+import { useSubtopics } from '@/lib/hooks/useSubtopics'
 
 interface Props {
   open: boolean
@@ -34,12 +34,14 @@ export default function EntryModal({
   clients,
   defaultDate,
 }: Props) {
-  const internalSubtopics = clients.filter(client => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(client.name))
-  const normalClients = clients.filter(client => !INTERNAL_CLIENT_SUBTOPIC_NAMES.has(client.name))
-  const CATALIZAR_OPTION_ID = 'catalizar-root'
-  const clientOptions = [{ id: CATALIZAR_OPTION_ID, name: INTERNAL_CLIENT_ROOT_NAME }, ...normalClients]
+  const isCatalizarClient = (client: Client) => client.name === INTERNAL_CLIENT_ROOT_NAME
+  const catalizar = clients.find(isCatalizarClient)
+  const { subtopics } = useSubtopics(catalizar?.id ?? null)
+  const normalClients = clients.filter(client => !isCatalizarClient(client))
+  const CATALIZAR_OPTION_ID = catalizar?.id ?? 'catalizar-root'
+  const clientOptions = catalizar ? [catalizar, ...normalClients] : normalClients
 
-  const [selectedClientOption, setSelectedClientOption] = useState('')
+  const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedSubtopicId, setSelectedSubtopicId] = useState('')
   const [task, setTask] = useState<EntryTaskType>(ENTRY_TASK_TYPES[0])
   const [detail, setDetail] = useState('')
@@ -51,35 +53,34 @@ export default function EntryModal({
   }, [defaultDate])
 
   useEffect(() => {
-    if (clientOptions.length && !selectedClientOption) {
-      setSelectedClientOption(clientOptions[0].id)
+    if (clientOptions.length && !selectedClientId) {
+      setSelectedClientId(clientOptions[0].id)
     }
-  }, [clientOptions, selectedClientOption])
+  }, [clientOptions, selectedClientId])
 
   useEffect(() => {
-    if (internalSubtopics.length && !selectedSubtopicId) {
-      setSelectedSubtopicId(internalSubtopics[0].id)
+    if (subtopics.length && !selectedSubtopicId) {
+      setSelectedSubtopicId(subtopics[0].id)
     }
-  }, [internalSubtopics, selectedSubtopicId])
+  }, [subtopics, selectedSubtopicId])
 
-  const effectiveClientId = selectedClientOption === CATALIZAR_OPTION_ID
-    ? selectedSubtopicId
-    : selectedClientOption
+  const isCatalizarSelected = selectedClientId === CATALIZAR_OPTION_ID
 
   async function handleSave() {
-    if (!effectiveClientId || !hours || !date) {
+    if (!selectedClientId || !hours || !date) {
       alert('Completá cliente, horas y fecha')
       return
     }
 
-    if (selectedClientOption === CATALIZAR_OPTION_ID && !selectedSubtopicId) {
+    if (isCatalizarSelected && !selectedSubtopicId) {
       alert('Seleccioná un subtema para Catalizar')
       return
     }
 
     try {
       await upsertEntry({
-        clientId: effectiveClientId,
+        clientId: isCatalizarSelected ? selectedSubtopicId : selectedClientId,
+        subtopicId: isCatalizarSelected ? selectedSubtopicId : undefined,
         taskName: task,
         detail: detail.trim(),
         hours: parseFloat(hours),
@@ -101,23 +102,27 @@ export default function EntryModal({
   return (
     <BottomSheet open={open} onClose={onClose} title="Registrar horas">
       <Label>Cliente / Área</Label>
-      <Select value={selectedClientOption} onChange={e => setSelectedClientOption(e.target.value)}>
-        {clientOptions.map(entity => (
-          <option key={entity.id} value={entity.id}>
-            {entity.name}
+      <Select value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
+        {clientOptions.map(client => (
+          <option key={client.id} value={client.id}>
+            {client.name}
           </option>
         ))}
       </Select>
 
-      {selectedClientOption === CATALIZAR_OPTION_ID && (
+      {isCatalizarSelected && (
         <>
           <Label>Subtema Catalizar</Label>
           <Select value={selectedSubtopicId} onChange={e => setSelectedSubtopicId(e.target.value)}>
-            {internalSubtopics.map(subtopic => (
-              <option key={subtopic.id} value={subtopic.id}>
-                {subtopic.name}
-              </option>
-            ))}
+            {subtopics.length > 0 ? (
+              subtopics.map(subtopic => (
+                <option key={subtopic.id} value={subtopic.id}>
+                  {subtopic.name}
+                </option>
+              ))
+            ) : (
+              <option disabled>Sin subtemas disponibles</option>
+            )}
           </Select>
         </>
       )}
