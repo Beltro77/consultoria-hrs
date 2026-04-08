@@ -17,7 +17,7 @@ interface Props {
   onDeleteClient: (id: string) => Promise<void> | void
 }
 
-export default function ClientesView({ clients, onDataChange }: Props) {
+export default function ClientesView({ clients, onDataChange, onDeleteClient }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const { entries } = useHourEntries()
 

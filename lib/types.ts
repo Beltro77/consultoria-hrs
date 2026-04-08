@@ -102,7 +102,7 @@ export const INTERNAL_CLIENT_PRESETS: Array<Omit<Client, 'id'>> = [
 
 export const INTERNAL_CLIENT_SUBTOPIC_NAMES = new Set(INTERNAL_CLIENT_PRESETS.map(c => c.name))
 export const INTERNAL_CLIENT_SYNONYMS = new Set(['Administración', 'Desarrollo', 'Desarrollo herramientas'])
-export const INTERNAL_CLIENT_NAME_ALIASES = new Set([ ...INTERNAL_CLIENT_SYNONYMS, INTERNAL_CLIENT_ROOT_NAME ])
+export const INTERNAL_CLIENT_NAME_ALIASES = new Set(Array.from(INTERNAL_CLIENT_SYNONYMS).concat(INTERNAL_CLIENT_ROOT_NAME))
 export const INTERNAL_CLIENT_NAMES = new Set([INTERNAL_CLIENT_ROOT_NAME])
 export const INTERNAL_CLIENT_SUBTOPICS = ['Administración', 'Desarrollo'] as const
 

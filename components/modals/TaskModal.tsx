@@ -35,6 +35,7 @@ export default function TaskModal({ open, onClose, onSaved, defaultDate }: Props
           day: bd.getDate(),
           weekday: bd.getDay(),
           startDate: recurStart,
+          active: true,
         }
         await upsertRecurringDef(def)
         await syncRecurringTasks()
