@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { BottomSheet, Btn, Input, Label, ColorPicker } from '@/components/ui'
-import { upsertClient } from '@/lib/storage'
+import { upsertClient } from '@/lib/services/clients.service'
+import { INTERNAL_CLIENT_NAME_ALIASES } from '@/lib/types'
 
 interface Props {
   open: boolean
@@ -21,12 +22,21 @@ export default function ClientModal({ open, onClose, onSaved }: Props) {
       return
     }
 
-    await upsertClient({
-      id: `cli_${Date.now()}`,
-      name: name.trim(),
-      rate: rate ? parseFloat(rate) : undefined,
-      colorIndex,
-    })
+    if (INTERNAL_CLIENT_NAME_ALIASES.has(name.trim())) {
+      alert('Este nombre está reservado para el cliente interno Catalizar.')
+      return
+    }
+
+    try {
+      await upsertClient({
+        name: name.trim(),
+        rate: rate ? parseFloat(rate) : undefined,
+        colorIndex,
+      })
+    } catch (error) {
+      alert(`Error guardando cliente: ${(error as Error)?.message ?? 'error desconocido'}`)
+      return
+    }
 
     setName('')
     setRate('')

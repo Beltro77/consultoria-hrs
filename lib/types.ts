@@ -36,14 +36,25 @@ export interface Client {
   colorIndex: number
 }
 
+export type ClientInput = Omit<Client, 'id'> & {
+  id?: string
+}
+
 export interface HourEntry {
   id: string
   clientId: string
-  task: EntryTaskType
+  taskId?: string | null
+  taskName?: string
+  task?: string
   detail?: string
   hours: number
   date: string         // YYYY-MM-DD
   createdAt: string
+}
+
+export type HourEntryInput = Omit<HourEntry, 'id' | 'createdAt'> & {
+  id?: string
+  createdAt?: string
 }
 
 export interface Task {
@@ -58,6 +69,11 @@ export interface Task {
   createdAt: string
 }
 
+export type TaskInput = Omit<Task, 'id' | 'createdAt'> & {
+  id?: string
+  createdAt?: string
+}
+
 export interface RecurDef {
   id: string
   title: string
@@ -66,13 +82,37 @@ export interface RecurDef {
   day?: number         // for monthly-day
   weekday?: number     // 0-6 for weekly
   startDate: string    // YYYY-MM-DD, earliest date to generate
+  active: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// ─── Internal "virtual" clients ──────────────────────────────────────────────
-export const INTERNAL_CLIENTS: Client[] = [
-  { id: 'admin', name: 'Administración',          colorIndex: 2 },
-  { id: 'tools', name: 'Desarrollo herramientas', colorIndex: 4 },
+export type RecurDefInput = Omit<RecurDef, 'id' | 'createdAt' | 'updatedAt'> & {
+  id?: string
+  createdAt?: string
+}
+
+// ─── Internal client presets ─────────────────────────────────────────────────────
+export const INTERNAL_CLIENT_ROOT_NAME = 'Catalizar'
+
+export const INTERNAL_CLIENT_PRESETS: Array<Omit<Client, 'id'>> = [
+  { name: 'Administración', colorIndex: 2 },
+  { name: 'Desarrollo',     colorIndex: 4 },
 ]
+
+export const INTERNAL_CLIENT_SUBTOPIC_NAMES = new Set(INTERNAL_CLIENT_PRESETS.map(c => c.name))
+export const INTERNAL_CLIENT_SYNONYMS = new Set(['Administración', 'Desarrollo', 'Desarrollo herramientas'])
+export const INTERNAL_CLIENT_NAME_ALIASES = new Set([ ...INTERNAL_CLIENT_SYNONYMS, INTERNAL_CLIENT_ROOT_NAME ])
+export const INTERNAL_CLIENT_NAMES = new Set([INTERNAL_CLIENT_ROOT_NAME])
+export const INTERNAL_CLIENT_SUBTOPICS = ['Administración', 'Desarrollo'] as const
+
+export function isInternalClientName(name: string) {
+  return INTERNAL_CLIENT_SYNONYMS.has(name)
+}
+
+export function isReservedClientName(name: string) {
+  return INTERNAL_CLIENT_NAME_ALIASES.has(name)
+}
 
 // ─── Color palette ───────────────────────────────────────────────────────────
 export const COLORS = [

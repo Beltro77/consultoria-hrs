@@ -12,11 +12,12 @@ import {
 } from '@/components/ui'
 import {
   ENTRY_TASK_TYPES,
-  INTERNAL_CLIENTS,
+  INTERNAL_CLIENT_ROOT_NAME,
+  INTERNAL_CLIENT_SUBTOPIC_NAMES,
   type Client,
   type EntryTaskType,
 } from '@/lib/types'
-import { upsertEntryDB } from '@/lib/storage'
+import { upsertEntry } from '@/lib/services/hourEntries.service'
 
 interface Props {
   open: boolean
@@ -33,9 +34,13 @@ export default function EntryModal({
   clients,
   defaultDate,
 }: Props) {
-  const allEntities = [...INTERNAL_CLIENTS, ...clients]
+  const internalSubtopics = clients.filter(client => INTERNAL_CLIENT_SUBTOPIC_NAMES.has(client.name))
+  const normalClients = clients.filter(client => !INTERNAL_CLIENT_SUBTOPIC_NAMES.has(client.name))
+  const CATALIZAR_OPTION_ID = 'catalizar-root'
+  const clientOptions = [{ id: CATALIZAR_OPTION_ID, name: INTERNAL_CLIENT_ROOT_NAME }, ...normalClients]
 
-  const [clientId, setClientId] = useState('')
+  const [selectedClientOption, setSelectedClientOption] = useState('')
+  const [selectedSubtopicId, setSelectedSubtopicId] = useState('')
   const [task, setTask] = useState<EntryTaskType>(ENTRY_TASK_TYPES[0])
   const [detail, setDetail] = useState('')
   const [hours, setHours] = useState('')
@@ -46,26 +51,45 @@ export default function EntryModal({
   }, [defaultDate])
 
   useEffect(() => {
-    if (allEntities.length && !clientId) {
-      setClientId(allEntities[0].id)
+    if (clientOptions.length && !selectedClientOption) {
+      setSelectedClientOption(clientOptions[0].id)
     }
-  }, [allEntities, clientId])
+  }, [clientOptions, selectedClientOption])
+
+  useEffect(() => {
+    if (internalSubtopics.length && !selectedSubtopicId) {
+      setSelectedSubtopicId(internalSubtopics[0].id)
+    }
+  }, [internalSubtopics, selectedSubtopicId])
+
+  const effectiveClientId = selectedClientOption === CATALIZAR_OPTION_ID
+    ? selectedSubtopicId
+    : selectedClientOption
 
   async function handleSave() {
-    if (!clientId || !hours || !date) {
+    if (!effectiveClientId || !hours || !date) {
       alert('Completá cliente, horas y fecha')
       return
     }
 
-    await upsertEntryDB({
-      id: `e_${Date.now()}`,
-      clientId,
-      task,
-      detail: detail.trim(),
-      hours: parseFloat(hours),
-      date,
-      createdAt: new Date().toISOString(),
-    })
+    if (selectedClientOption === CATALIZAR_OPTION_ID && !selectedSubtopicId) {
+      alert('Seleccioná un subtema para Catalizar')
+      return
+    }
+
+    try {
+      await upsertEntry({
+        clientId: effectiveClientId,
+        taskName: task,
+        detail: detail.trim(),
+        hours: parseFloat(hours),
+        date,
+        createdAt: new Date().toISOString(),
+      })
+    } catch (error) {
+      alert(`Error guardando registro: ${(error as Error)?.message ?? 'error desconocido'}`)
+      return
+    }
 
     setHours('')
     setDetail('')
@@ -77,13 +101,26 @@ export default function EntryModal({
   return (
     <BottomSheet open={open} onClose={onClose} title="Registrar horas">
       <Label>Cliente / Área</Label>
-      <Select value={clientId} onChange={e => setClientId(e.target.value)}>
-        {allEntities.map(entity => (
+      <Select value={selectedClientOption} onChange={e => setSelectedClientOption(e.target.value)}>
+        {clientOptions.map(entity => (
           <option key={entity.id} value={entity.id}>
             {entity.name}
           </option>
         ))}
       </Select>
+
+      {selectedClientOption === CATALIZAR_OPTION_ID && (
+        <>
+          <Label>Subtema Catalizar</Label>
+          <Select value={selectedSubtopicId} onChange={e => setSelectedSubtopicId(e.target.value)}>
+            {internalSubtopics.map(subtopic => (
+              <option key={subtopic.id} value={subtopic.id}>
+                {subtopic.name}
+              </option>
+            ))}
+          </Select>
+        </>
+      )}
 
       <Label>Tipo de tarea</Label>
       <div className="flex flex-wrap gap-2 mt-1">

@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { BottomSheet, Btn, Input, Label, Select, Tag, Textarea } from '@/components/ui'
-import { upsertTask, upsertRecurDef, syncRecurring } from '@/lib/storage'
+import { upsertTask, syncRecurringTasks } from '@/lib/services/tasks.service'
+import { upsertRecurringDef } from '@/lib/services/recurringDefs.service'
 
 interface Props {
   open: boolean
@@ -20,34 +21,40 @@ export default function TaskModal({ open, onClose, onSaved, defaultDate }: Props
   const [recurType, setRecurType] = useState('monthly-start')
   const [recurStart, setRecurStart] = useState(defaultDate)
 
-  function handleSave() {
+  async function handleSave() {
     if (!title.trim()) { alert('Ingresá un título'); return }
-    if (type === 'recurrente') {
-      if (!recurStart) { alert('Elegí la primera fecha'); return }
-      const bd = new Date(recurStart + 'T12:00:00')
-      const def = {
-        id: `rd_${Date.now()}`,
-        title: title.trim(),
-        desc: desc.trim(),
-        type: recurType as any,
-        day: bd.getDate(),
-        weekday: bd.getDay(),
-        startDate: recurStart,
+
+    try {
+      if (type === 'recurrente') {
+        if (!recurStart) { alert('Elegí la primera fecha'); return }
+        const bd = new Date(recurStart + 'T12:00:00')
+        const def = {
+          title: title.trim(),
+          desc: desc.trim(),
+          type: recurType as any,
+          day: bd.getDate(),
+          weekday: bd.getDay(),
+          startDate: recurStart,
+        }
+        await upsertRecurringDef(def)
+        await syncRecurringTasks()
+      } else {
+        if (!date) { alert('Elegí una fecha'); return }
+        await upsertTask({
+          title: title.trim(),
+          desc: desc.trim(),
+          date,
+          originalDate: date,
+          status: 'pendiente',
+          type: 'puntual',
+          createdAt: new Date().toISOString(),
+        })
       }
-      upsertRecurDef(def)
-      syncRecurring()
-    } else {
-      if (!date) { alert('Elegí una fecha'); return }
-      upsertTask({
-        id: `t_${Date.now()}`,
-        title: title.trim(),
-        desc: desc.trim(),
-        date, originalDate: date,
-        status: 'pendiente',
-        type: 'puntual',
-        createdAt: new Date().toISOString(),
-      })
+    } catch (error) {
+      alert(`Error guardando tarea: ${(error as Error)?.message ?? 'error desconocido'}`)
+      return
     }
+
     setTitle(''); setDesc('')
     onSaved(); onClose()
   }

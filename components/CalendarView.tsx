@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import {
   MONTHS_FULL,
-  INTERNAL_CLIENTS,
+  MONTHS_SHORT,
   clientColor,
   todayStr,
   TASK_STATUS_CYCLE,
@@ -11,13 +11,8 @@ import {
   type Task,
   type HourEntry,
 } from '@/lib/types'
-import {
-  buildTaskMap,
-  getEntriesDB,
-  removeEntryDB,
-  upsertTask,
-  getTasks,
-} from '@/lib/storage'
+import { useHourEntries } from '@/lib/hooks/useHourEntries'
+import { useTasks } from '@/lib/hooks/useTasks'
 import { StatusButton, Badge } from '@/components/ui'
 import EntryModal from '@/components/modals/EntryModal'
 import TaskModal from '@/components/modals/TaskModal'
@@ -29,27 +24,34 @@ interface Props {
   onDataChange: () => Promise<void> | void
 }
 
+function buildTaskMap(tasks: Task[]): Record<string, Task[]> {
+  return tasks.reduce((acc, task) => {
+    const key = task.date
+    acc[key] = acc[key] || []
+    acc[key].push(task)
+    return acc
+  }, {} as Record<string, Task[]>)
+}
+
 export default function CalendarView({ clients, onDataChange }: Props) {
   const [month, setMonth] = useState(new Date().getMonth())
   const [year, setYear] = useState(new Date().getFullYear())
   const [selected, setSelected] = useState(todayStr())
   const [entryOpen, setEntryOpen] = useState(false)
   const [taskOpen, setTaskOpen] = useState(false)
-  const [entries, setEntries] = useState<HourEntry[]>([])
 
-  const loadEntries = useCallback(async () => {
-    const data = await getEntriesDB()
-    setEntries(data)
-  }, [])
+  const { entries, refresh: refreshEntries, removeEntry } = useHourEntries()
+  const { tasks, refresh: refreshTasks, saveTask, removeTask } = useTasks()
 
-  const refresh = useCallback(async () => {
-    await loadEntries()
+  const refreshEntriesAndParent = useCallback(async () => {
+    await refreshEntries()
     await onDataChange()
-  }, [loadEntries, onDataChange])
+  }, [refreshEntries, onDataChange])
 
-  useEffect(() => {
-    loadEntries()
-  }, [loadEntries])
+  const refreshTasksAndParent = useCallback(async () => {
+    await refreshTasks()
+    await onDataChange()
+  }, [refreshTasks, onDataChange])
 
   function chMonth(delta: number) {
     let m = month + delta
@@ -69,8 +71,8 @@ export default function CalendarView({ clients, onDataChange }: Props) {
   }
 
   const today = todayStr()
-  const allEntities = [...INTERNAL_CLIENTS, ...clients]
-  const taskMap = buildTaskMap()
+  const allEntities = clients
+  const taskMap = buildTaskMap(tasks)
 
   function entriesForDateLocal(date: string) {
     return entries.filter(e => e.date === date)
@@ -126,24 +128,23 @@ export default function CalendarView({ clients, onDataChange }: Props) {
     month: 'long',
   })
 
-  function cycleStatus(task: Task) {
+  async function cycleStatus(task: Task) {
     const idx = TASK_STATUS_CYCLE.indexOf(task.status)
     const next = TASK_STATUS_CYCLE[(idx + 1) % TASK_STATUS_CYCLE.length]
-    upsertTask({ ...task, status: next })
-    refresh()
+    await saveTask({ ...task, status: next })
+    await refreshTasksAndParent()
   }
 
   async function delEntry(id: string) {
     if (!confirm('¿Eliminar este registro?')) return
-    await removeEntryDB(id)
-    await refresh()
+    await removeEntry(id)
+    await refreshEntriesAndParent()
   }
 
-  function delTask(id: string) {
+  async function delTask(id: string) {
     if (!confirm('¿Eliminar esta tarea?')) return
-    const all = getTasks().filter(t => t.id !== id)
-    localStorage.setItem('chrs_tasks', JSON.stringify(all))
-    refresh()
+    await removeTask(id)
+    await refreshTasksAndParent()
   }
 
   return (
@@ -356,7 +357,7 @@ export default function CalendarView({ clients, onDataChange }: Props) {
         clients={clients}
         onSaved={async () => {
           setEntryOpen(false)
-          await refresh()
+          await refreshEntriesAndParent()
         }}
       />
 
@@ -364,9 +365,9 @@ export default function CalendarView({ clients, onDataChange }: Props) {
         open={taskOpen}
         onClose={() => setTaskOpen(false)}
         defaultDate={selected}
-        onSaved={() => {
+        onSaved={async () => {
           setTaskOpen(false)
-          refresh()
+          await refreshTasksAndParent()
         }}
       />
     </div>

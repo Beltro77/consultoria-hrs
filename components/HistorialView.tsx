@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { INTERNAL_CLIENTS, clientColor, type Client, type HourEntry } from '@/lib/types'
-import { getEntriesDB, removeEntryDB } from '@/lib/storage'
+import { useState } from 'react'
+import { clientColor, type Client, type HourEntry } from '@/lib/types'
+import { useHourEntries } from '@/lib/hooks/useHourEntries'
 import { Tag } from '@/components/ui'
 
 interface Props {
@@ -12,24 +12,15 @@ interface Props {
 
 export default function HistorialView({ clients, onDataChange }: Props) {
   const [filter, setFilter] = useState('all')
-  const [entries, setEntries] = useState<HourEntry[]>([])
+  const { entries, refresh, removeEntry } = useHourEntries()
 
-  const allEnts = [...INTERNAL_CLIENTS, ...clients]
-
-  const loadEntries = useCallback(async () => {
-    const data = await getEntriesDB()
-    setEntries(data)
-  }, [])
-
-  useEffect(() => {
-    loadEntries()
-  }, [loadEntries])
+  const allEnts = clients
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar este registro?')) return
 
-    await removeEntryDB(id)
-    await loadEntries()
+    await removeEntry(id)
+    await refresh()
     await onDataChange()
   }
 
