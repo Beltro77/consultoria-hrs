@@ -109,19 +109,16 @@ export type RecurDefInput = Omit<RecurDef, 'id' | 'createdAt' | 'updatedAt'> & {
 export const INTERNAL_CLIENT_ROOT_NAME = 'Catalizar'
 
 export const INTERNAL_CLIENT_PRESETS: Array<Omit<Client, 'id'>> = [
-  { name: 'Administración', colorIndex: 2 },
-  { name: 'Desarrollo',     colorIndex: 4 },
+  { name: 'Catalizar', colorIndex: 4 },
 ]
 
-export const INTERNAL_CLIENT_SUBTOPIC_NAMES = new Set(INTERNAL_CLIENT_PRESETS.map(c => c.name))
-export const INTERNAL_CLIENT_SYNONYMS = new Set(['Administración', 'Desarrollo', 'Desarrollo herramientas'])
-export const INTERNAL_CLIENT_NAME_ALIASES = new Set(Array.from(INTERNAL_CLIENT_SYNONYMS).concat(INTERNAL_CLIENT_ROOT_NAME))
-export const INTERNAL_CLIENT_NAMES = new Set([INTERNAL_CLIENT_ROOT_NAME])
 export const INTERNAL_CLIENT_SUBTOPICS = ['Administración', 'Desarrollo', 'Marketing', 'Comercial'] as const
 
-export function isInternalClientName(name: string) {
-  return INTERNAL_CLIENT_SYNONYMS.has(name)
-}
+// Reserved names that cannot be used for regular clients
+export const INTERNAL_CLIENT_NAME_ALIASES = new Set([
+  INTERNAL_CLIENT_ROOT_NAME,
+  ...INTERNAL_CLIENT_SUBTOPICS,
+])
 
 export function isReservedClientName(name: string) {
   return INTERNAL_CLIENT_NAME_ALIASES.has(name)

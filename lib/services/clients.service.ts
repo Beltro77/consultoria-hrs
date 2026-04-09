@@ -3,7 +3,7 @@ import {
   INTERNAL_CLIENT_NAME_ALIASES,
   INTERNAL_CLIENT_PRESETS,
   INTERNAL_CLIENT_ROOT_NAME,
-  isInternalClientName,
+  INTERNAL_CLIENT_SUBTOPICS,
   type Client,
   type ClientInput,
 } from '@/lib/types'
@@ -92,7 +92,7 @@ export async function deleteClient(id: string): Promise<void> {
     throw new Error('Cliente no encontrado.')
   }
 
-  if (isInternalClientName(client.name) || client.name === INTERNAL_CLIENT_ROOT_NAME) {
+  if (INTERNAL_CLIENT_NAME_ALIASES.has(client.name)) {
     throw new Error('No se puede eliminar un cliente interno.')
   }
 
@@ -125,15 +125,11 @@ export async function ensureInternalClients(): Promise<void> {
   const profile = await getCurrentProfile()
 
   for (const preset of INTERNAL_CLIENT_PRESETS) {
-    const names = preset.name === 'Desarrollo'
-      ? ['Desarrollo', 'Desarrollo herramientas']
-      : [preset.name]
-
     const { data: existing, error: fetchError } = await supabase
       .from(TABLE)
       .select('*')
       .eq('owner_id', profile.id)
-      .in('name', names)
+      .eq('name', preset.name)
       .maybeSingle()
 
     if (fetchError) {
@@ -142,22 +138,7 @@ export async function ensureInternalClients(): Promise<void> {
     }
 
     if (existing) {
-      const updatePayload: { name?: string; color_index?: number } = {}
-      if (existing.name !== preset.name) updatePayload.name = preset.name
-      if (existing.color_index !== preset.colorIndex) updatePayload.color_index = preset.colorIndex
-
-      if (Object.keys(updatePayload).length > 0) {
-        const { error: updateError } = await supabase
-          .from(TABLE)
-          .update(updatePayload)
-          .eq('id', existing.id)
-
-        if (updateError) {
-          console.error('Error updating internal client:', preset.name, updateError)
-          throw updateError
-        }
-      }
-
+      // Already exists, skip
       continue
     }
 
@@ -199,7 +180,7 @@ export async function ensureInternalSubtopics(): Promise<void> {
   }
 
   // Ensure default subtopics: Administración, Desarrollo, Marketing, Comercial
-  const defaultSubtopics = ['Administración', 'Desarrollo', 'Marketing', 'Comercial']
+  const defaultSubtopics = Array.from(INTERNAL_CLIENT_SUBTOPICS)
 
   for (const subtopicName of defaultSubtopics) {
     const { data: existing, error: fetchError } = await supabase
