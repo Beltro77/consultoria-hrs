@@ -36,13 +36,13 @@ export default function EntryModal({
 }: Props) {
   const isCatalizarClient = (client: Client) => client.name === INTERNAL_CLIENT_ROOT_NAME
   const catalizar = clients.find(isCatalizarClient)
-  const { subtopics } = useSubtopics(catalizar?.id ?? null)
   const normalClients = clients.filter(client => !isCatalizarClient(client))
-  const CATALIZAR_OPTION_ID = catalizar?.id ?? 'catalizar-root'
   const clientOptions = catalizar ? [catalizar, ...normalClients] : normalClients
 
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedSubtopicId, setSelectedSubtopicId] = useState('')
+
+  const { subtopics } = useSubtopics(selectedClientId || null)
   const [task, setTask] = useState<EntryTaskType>(ENTRY_TASK_TYPES[0])
   const [detail, setDetail] = useState('')
   const [hours, setHours] = useState('')
@@ -59,12 +59,16 @@ export default function EntryModal({
   }, [clientOptions, selectedClientId])
 
   useEffect(() => {
+    setSelectedSubtopicId('')
+  }, [selectedClientId])
+
+  useEffect(() => {
     if (subtopics.length && !selectedSubtopicId) {
       setSelectedSubtopicId(subtopics[0].id)
     }
   }, [subtopics, selectedSubtopicId])
 
-  const isCatalizarSelected = selectedClientId === CATALIZAR_OPTION_ID
+  const hasSubtopics = subtopics.length > 0
 
   async function handleSave() {
     if (!selectedClientId || !hours || !date) {
@@ -72,15 +76,15 @@ export default function EntryModal({
       return
     }
 
-    if (isCatalizarSelected && !selectedSubtopicId) {
-      alert('Seleccioná un subtema para Catalizar')
+    if (hasSubtopics && !selectedSubtopicId) {
+      alert('Seleccioná un subtema')
       return
     }
 
     try {
       await upsertEntry({
         clientId: selectedClientId,
-        subtopicId: isCatalizarSelected ? selectedSubtopicId : undefined,
+        subtopicId: hasSubtopics ? selectedSubtopicId : undefined,
         taskName: task,
         detail: detail.trim(),
         hours: parseFloat(hours),
@@ -110,9 +114,9 @@ export default function EntryModal({
         ))}
       </Select>
 
-      {isCatalizarSelected && (
+      {hasSubtopics && (
         <>
-          <Label>Subtema Catalizar</Label>
+          <Label>Subtema</Label>
           <Select value={selectedSubtopicId} onChange={e => setSelectedSubtopicId(e.target.value)}>
             {subtopics.length > 0 ? (
               subtopics.map(subtopic => (
