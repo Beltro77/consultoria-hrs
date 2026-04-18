@@ -27,7 +27,6 @@ interface CardProps {
 
 function ExternalClientCard({ client, entries, onDelete, onDataChange }: CardProps) {
   const [subtopicName, setSubtopicName] = useState('')
-  const [showSubtopics, setShowSubtopics] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const { subtopics, addSubtopic, removeSubtopic } = useSubtopics(client.id)
 
@@ -58,8 +57,8 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange }: CardPro
   }
 
   return (
-    <div className="border-b border-stone-100 last:border-0">
-      <div className="flex items-center gap-3 py-2.5">
+    <div className="border-b border-stone-100 last:border-0 pb-3 pt-2.5">
+      <div className="flex items-center gap-3">
         <Avatar name={client.name} bg={col.bg} fg={col.fg} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-stone-800 truncate">{client.name}</p>
@@ -72,62 +71,56 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange }: CardPro
             ${earned.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
           </p>
         )}
-        <button
-          onClick={() => setShowSubtopics(v => !v)}
-          className="text-xs text-stone-400 hover:text-stone-600 px-1"
-        >
-          {showSubtopics ? '▲' : '▼'} subtemas
-        </button>
         <button onClick={onDelete} className="text-xs text-red-600 hover:text-red-800">
           Eliminar
         </button>
       </div>
 
-      {showSubtopics && (
-        <div className="pl-11 pb-3">
-          {subtopics.length === 0 && !showAdd && (
-            <p className="text-xs text-stone-400 mb-2">Sin subtemas</p>
-          )}
-          {subtopics.map(s => {
-            const subH = entries
-              .filter(e => e.clientId === client.id && e.subtopicId === s.id)
-              .reduce((a, e) => a + e.hours, 0)
-            return (
-              <div key={s.id} className="flex items-center gap-2 py-1 border-b border-stone-50 last:border-0">
-                <p className="text-xs text-stone-700 flex-1">{s.name}</p>
+      <div className="pl-11 mt-2">
+        {subtopics.map(s => {
+          const subH = entries
+            .filter(e => e.clientId === client.id && e.subtopicId === s.id)
+            .reduce((a, e) => a + e.hours, 0)
+          const sCol = clientColor({ id: s.id, name: s.name, colorIndex: 2 })
+          return (
+            <div key={s.id} className="flex items-center gap-3 py-1.5 border-b border-stone-50 last:border-0">
+              <Avatar name={s.name} bg={sCol.bg} fg={sCol.fg} size="sm" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-stone-800">{s.name}</p>
                 <p className="text-xs text-stone-400">{subH.toFixed(1)} hs</p>
-                <button
-                  onClick={() => handleDeleteSubtopic(s.id)}
-                  className="text-xs text-red-500 hover:text-red-700 ml-1"
-                >
-                  ×
-                </button>
               </div>
-            )
-          })}
-          {showAdd ? (
-            <div className="flex gap-2 mt-2">
-              <Input
-                value={subtopicName}
-                onChange={e => setSubtopicName(e.target.value)}
-                placeholder="Nombre del subtema"
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleAdd()
-                  if (e.key === 'Escape') { setShowAdd(false); setSubtopicName('') }
-                }}
-              />
-              <Btn onClick={handleAdd}>Agregar</Btn>
+              <button
+                onClick={() => handleDeleteSubtopic(s.id)}
+                className="text-xs text-red-600 hover:text-red-800"
+              >
+                Eliminar
+              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="w-full mt-2 py-1.5 text-xs text-stone-500 hover:bg-stone-50 rounded-lg border border-stone-200"
-            >
-              + Agregar subtema
-            </button>
-          )}
-        </div>
-      )}
+          )
+        })}
+
+        {showAdd ? (
+          <div className="flex gap-2 mt-2">
+            <Input
+              value={subtopicName}
+              onChange={e => setSubtopicName(e.target.value)}
+              placeholder="Nombre del subtema"
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAdd()
+                if (e.key === 'Escape') { setShowAdd(false); setSubtopicName('') }
+              }}
+            />
+            <Btn onClick={handleAdd}>Agregar</Btn>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAdd(true)}
+            className="w-full mt-2 py-2 text-sm text-stone-600 hover:bg-stone-50 rounded-lg border border-stone-200"
+          >
+            + Agregar subtema
+          </button>
+        )}
+      </div>
     </div>
   )
 }
