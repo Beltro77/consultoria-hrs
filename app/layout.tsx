@@ -4,10 +4,11 @@ import './globals.css'
 
 const dm = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['400', '500'] })
 
- export const metadata = {title: 'Catalizar HS',
-  description: 'App de horas Catalizar',
+export const metadata: Metadata = {
+  title: 'Consultoría Hrs',
+  description: 'Seguimiento de horas y tareas de consultoría',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Hrs' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Consultoría Hrs' },
 }
 
 export const viewport: Viewport = {
@@ -15,7 +16,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#0b0b0b',
+  themeColor: '#1D9E75',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
