@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MONTHS_FULL,
   MONTHS_SHORT,
@@ -38,21 +38,9 @@ function entriesForPeriod(entries: any[], period: Period, month: number, year: n
     const [entryYear, entryMonth] = entry.date.split('-').map(Number)
     const monthIndex = entryMonth - 1
 
-    if (period === 'mes') {
-      return entryYear === year && monthIndex === month
-    }
-
-    if (period === 'trim') {
-      return (
-        entryYear === year &&
-        Math.floor(monthIndex / 3) === Math.floor(month / 3)
-      )
-    }
-
-    if (period === 'año') {
-      return entryYear === year
-    }
-
+    if (period === 'mes') return entryYear === year && monthIndex === month
+    if (period === 'trim') return entryYear === year && Math.floor(monthIndex / 3) === Math.floor(month / 3)
+    if (period === 'año') return entryYear === year
     return true
   })
 }
@@ -65,9 +53,29 @@ export default function DashboardView({ clients }: Props) {
   const [actPeriod, setActPeriod] = useState<Period>('mes')
   const donutRef = useRef<HTMLCanvasElement>(null)
   const { entries } = useHourEntries()
-  const allEnts = clients
-  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+
+  // Computed once and passed to all tabs — eliminates 3 duplicate useSubtopics calls
+  const catalizar = useMemo(
+    () => clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME),
+    [clients]
+  )
   const { subtopics } = useSubtopics(catalizar?.id ?? null)
+  const internalIds = useMemo(
+    () => new Set([
+      ...(catalizar ? [catalizar.id] : []),
+      ...subtopics.map(s => s.id),
+    ]),
+    [catalizar, subtopics]
+  )
+
+  const changeMonth = useCallback((delta: number) => {
+    setMonth(prev => {
+      let next = prev + delta
+      if (next < 0) { setYear(y => y - 1); return 11 }
+      if (next > 11) { setYear(y => y + 1); return 0 }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (tab !== 'mes') return
@@ -78,10 +86,6 @@ export default function DashboardView({ clients }: Props) {
 
     const data = entriesForMonth(entries, month, year)
     const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-    const internalIds = new Set([
-      ...(catalizar ? [catalizar.id] : []),
-      ...subtopics.map(s => s.id),
-    ])
     const byClient: Record<string, number> = {}
     data.forEach(entry => {
       const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
@@ -104,7 +108,7 @@ export default function DashboardView({ clients }: Props) {
       const slice = (hours / total) * Math.PI * 2
       const ent = id === INTERNAL_CLIENT_ROOT_NAME
         ? { id: 'internal-root', name: INTERNAL_CLIENT_ROOT_NAME, colorIndex: 4 }
-        : allEnts.find(item => item.id === id)
+        : clients.find(item => item.id === id)
       ctx.beginPath()
       ctx.moveTo(45, 45)
       ctx.arc(45, 45, 38, angle, angle + slice)
@@ -113,22 +117,7 @@ export default function DashboardView({ clients }: Props) {
       ctx.fill()
       angle += slice
     })
-  }, [tab, month, year, entries, allEnts])
-
-  function changeMonth(delta: number) {
-    let nextMonth = month + delta
-    let nextYear = year
-    if (nextMonth < 0) {
-      nextMonth = 11
-      nextYear -= 1
-    }
-    if (nextMonth > 11) {
-      nextMonth = 0
-      nextYear += 1
-    }
-    setMonth(nextMonth)
-    setYear(nextYear)
-  }
+  }, [tab, month, year, entries, clients, internalIds])
 
   return (
     <div className="p-4">
@@ -154,8 +143,9 @@ export default function DashboardView({ clients }: Props) {
           year={year}
           changeMonth={changeMonth}
           donutRef={donutRef}
-          allEnts={allEnts}
+          allEnts={clients}
           entries={entries}
+          internalIds={internalIds}
         />
       )}
 
@@ -165,8 +155,9 @@ export default function DashboardView({ clients }: Props) {
           setPeriod={setCliPeriod}
           refMonth={month}
           refYear={year}
-          allEnts={allEnts}
+          allEnts={clients}
           entries={entries}
+          internalIds={internalIds}
         />
       )}
 
@@ -176,21 +167,23 @@ export default function DashboardView({ clients }: Props) {
           setPeriod={setActPeriod}
           refMonth={month}
           refYear={year}
-          allEnts={allEnts}
+          allEnts={clients}
           entries={entries}
+          internalIds={internalIds}
         />
       )}
     </div>
   )
 }
 
-function MesTab({
+const MesTab = memo(function MesTab({
   month,
   year,
   changeMonth,
   donutRef,
   allEnts,
   entries,
+  internalIds,
 }: {
   month: number
   year: number
@@ -198,40 +191,42 @@ function MesTab({
   donutRef: React.RefObject<HTMLCanvasElement>
   allEnts: Client[]
   entries: any[]
+  internalIds: Set<string>
 }) {
-  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
-  const { subtopics } = useSubtopics(catalizar?.id ?? null)
-  const data = entriesForMonth(entries, month, year)
-  const total = data.reduce((sum, entry) => sum + entry.hours, 0)
-  const internalIds = new Set([
-    ...(catalizar ? [catalizar.id] : []),
-    ...subtopics.map(s => s.id),
-  ])
-  const clientTotal = data.filter(entry => !internalIds.has(entry.clientId)).reduce((sum, entry) => sum + entry.hours, 0)
-  const internalTotal = total - clientTotal
-  const activeDays = new Set(data.map(entry => entry.date)).size
+  const data = useMemo(() => entriesForMonth(entries, month, year), [entries, month, year])
+  const total = useMemo(() => data.reduce((sum, e) => sum + e.hours, 0), [data])
 
-  const sparks = Array.from({ length: 6 }, (_, index) => {
-    let m = month - (5 - index)
-    let y = year
-    if (m < 0) {
-      m += 12
-      y -= 1
-    }
+  const { clientTotal, internalTotal, activeDays } = useMemo(() => {
+    const clientTotal = data.filter(e => !internalIds.has(e.clientId)).reduce((s, e) => s + e.hours, 0)
     return {
-      month: m,
-      year: y,
-      hours: entriesForMonth(entries, m, y).reduce((sum, entry) => sum + entry.hours, 0),
+      clientTotal,
+      internalTotal: total - clientTotal,
+      activeDays: new Set(data.map(e => e.date)).size,
     }
-  })
-  const maxSpark = Math.max(...sparks.map(s => s.hours), 1)
+  }, [data, internalIds, total])
 
-  const byClient: Record<string, number> = {}
-  data.forEach(entry => {
-    const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
-    byClient[key] = (byClient[key] || 0) + entry.hours
-  })
-  const donutSorted = Object.entries(byClient).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const sparks = useMemo(() => {
+    const arr = Array.from({ length: 6 }, (_, index) => {
+      let m = month - (5 - index)
+      let y = year
+      if (m < 0) { m += 12; y -= 1 }
+      return {
+        month: m,
+        year: y,
+        hours: entriesForMonth(entries, m, y).reduce((sum, e) => sum + e.hours, 0),
+      }
+    })
+    return { arr, max: Math.max(...arr.map(s => s.hours), 1) }
+  }, [entries, month, year])
+
+  const donutSorted = useMemo(() => {
+    const byClient: Record<string, number> = {}
+    data.forEach(entry => {
+      const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
+      byClient[key] = (byClient[key] || 0) + entry.hours
+    })
+    return Object.entries(byClient).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  }, [data, internalIds])
 
   return (
     <>
@@ -253,12 +248,12 @@ function MesTab({
       <Card className="mb-3">
         <SectionTitle>Evolución últimos 6 meses</SectionTitle>
         <div className="flex items-end gap-1 h-12 mb-1">
-          {sparks.map((spark, index) => (
+          {sparks.arr.map((spark) => (
             <div
-              key={index}
+              key={`${spark.year}-${spark.month}`}
               className="flex-1 rounded-t-sm min-h-[3px]"
               style={{
-                height: `${Math.max(3, Math.round((spark.hours / maxSpark) * 48))}px`,
+                height: `${Math.max(3, Math.round((spark.hours / sparks.max) * 48))}px`,
                 background: spark.month === month && spark.year === year ? '#1D9E75' : '#9FE1CB',
               }}
               title={`${spark.hours.toFixed(1)}h`}
@@ -266,8 +261,8 @@ function MesTab({
           ))}
         </div>
         <div className="flex gap-1">
-          {sparks.map((spark, index) => (
-            <div key={index} className="flex-1 text-center text-[9px] text-stone-400">
+          {sparks.arr.map((spark) => (
+            <div key={`${spark.year}-${spark.month}-label`} className="flex-1 text-center text-[9px] text-stone-400">
               {MONTHS_SHORT[spark.month]}
             </div>
           ))}
@@ -302,15 +297,16 @@ function MesTab({
       </Card>
     </>
   )
-}
+})
 
-function ClienteTab({
+const ClienteTab = memo(function ClienteTab({
   period,
   setPeriod,
   refMonth,
   refYear,
   allEnts,
   entries,
+  internalIds,
 }: {
   period: Period
   setPeriod: (p: Period) => void
@@ -318,25 +314,25 @@ function ClienteTab({
   refYear: number
   allEnts: Client[]
   entries: any[]
+  internalIds: Set<string>
 }) {
-  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
-  const { subtopics } = useSubtopics(catalizar?.id ?? null)
-  const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set([
-    ...(catalizar ? [catalizar.id] : []),
-    ...subtopics.map(s => s.id),
-  ])
-  const byClient: Record<string, { hours: number; tasks: Record<string, number> }> = {}
-  data.forEach(entry => {
-    const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
-    byClient[key] = byClient[key] || { hours: 0, tasks: {} }
-    byClient[key].hours += entry.hours
-    const taskLabel = entry.task ?? 'Sin tarea'
-    byClient[key].tasks[taskLabel] = (byClient[key].tasks[taskLabel] || 0) + entry.hours
-  })
+  const data = useMemo(
+    () => entriesForPeriod(entries, period, refMonth, refYear),
+    [entries, period, refMonth, refYear]
+  )
 
-  const sorted = Object.entries(byClient).sort((a, b) => b[1].hours - a[1].hours)
-  const totalAll = sorted.reduce((sum, [, value]) => sum + value.hours, 0)
+  const { sorted, totalAll } = useMemo(() => {
+    const byClient: Record<string, { hours: number; tasks: Record<string, number> }> = {}
+    data.forEach(entry => {
+      const key = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
+      byClient[key] = byClient[key] || { hours: 0, tasks: {} }
+      byClient[key].hours += entry.hours
+      const taskLabel = entry.task ?? 'Sin tarea'
+      byClient[key].tasks[taskLabel] = (byClient[key].tasks[taskLabel] || 0) + entry.hours
+    })
+    const sorted = Object.entries(byClient).sort((a, b) => b[1].hours - a[1].hours)
+    return { sorted, totalAll: sorted.reduce((sum, [, v]) => sum + v.hours, 0) }
+  }, [data, internalIds])
 
   return (
     <>
@@ -351,9 +347,7 @@ function ClienteTab({
           const col = clientColor(ent)
           const name = ent?.name ?? id
           const pct = totalAll > 0 ? Math.round((data.hours / totalAll) * 100) : 0
-          const topTasks = Object.entries(data.tasks)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
+          const topTasks = Object.entries(data.tasks).sort((a, b) => b[1] - a[1]).slice(0, 3)
 
           return (
             <Card key={id} className="mb-3">
@@ -390,15 +384,16 @@ function ClienteTab({
       )}
     </>
   )
-}
+})
 
-function ActividadTab({
+const ActividadTab = memo(function ActividadTab({
   period,
   setPeriod,
   refMonth,
   refYear,
   allEnts,
   entries,
+  internalIds,
 }: {
   period: Period
   setPeriod: (p: Period) => void
@@ -406,32 +401,31 @@ function ActividadTab({
   refYear: number
   allEnts: Client[]
   entries: any[]
+  internalIds: Set<string>
 }) {
-  const catalizar = allEnts.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
-  const { subtopics } = useSubtopics(catalizar?.id ?? null)
-  const data = entriesForPeriod(entries, period, refMonth, refYear)
-  const internalIds = new Set([
-    ...(catalizar ? [catalizar.id] : []),
-    ...subtopics.map(s => s.id),
-  ])
-  const byTask: Record<string, number> = {}
-  const byClient: Record<string, Record<string, number>> = {}
+  const data = useMemo(
+    () => entriesForPeriod(entries, period, refMonth, refYear),
+    [entries, period, refMonth, refYear]
+  )
 
-  data.forEach(entry => {
-    const taskLabel = entry.task ?? 'Sin tarea'
-    byTask[taskLabel] = (byTask[taskLabel] || 0) + entry.hours
-    const clientKey = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
-    byClient[clientKey] = byClient[clientKey] || {}
-    byClient[clientKey][taskLabel] = (byClient[clientKey][taskLabel] || 0) + entry.hours
-  })
-
-  const taskSorted = Object.entries(byTask).sort((a, b) => b[1] - a[1])
-  const maxTask = taskSorted[0]?.[1] ?? 1
-  const clientSorted = Object.entries(byClient).sort((a, b) => {
-    const totalA = Object.values(a[1]).reduce((sum, value) => sum + value, 0)
-    const totalB = Object.values(b[1]).reduce((sum, value) => sum + value, 0)
-    return totalB - totalA
-  })
+  const { taskSorted, maxTask, clientSorted } = useMemo(() => {
+    const byTask: Record<string, number> = {}
+    const byClient: Record<string, Record<string, number>> = {}
+    data.forEach(entry => {
+      const taskLabel = entry.task ?? 'Sin tarea'
+      byTask[taskLabel] = (byTask[taskLabel] || 0) + entry.hours
+      const clientKey = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
+      byClient[clientKey] = byClient[clientKey] || {}
+      byClient[clientKey][taskLabel] = (byClient[clientKey][taskLabel] || 0) + entry.hours
+    })
+    const taskSorted = Object.entries(byTask).sort((a, b) => b[1] - a[1])
+    const clientSorted = Object.entries(byClient).sort((a, b) => {
+      const totalA = Object.values(a[1]).reduce((s, v) => s + v, 0)
+      const totalB = Object.values(b[1]).reduce((s, v) => s + v, 0)
+      return totalB - totalA
+    })
+    return { taskSorted, maxTask: taskSorted[0]?.[1] ?? 1, clientSorted }
+  }, [data, internalIds])
 
   return (
     <>
@@ -479,7 +473,10 @@ function ActividadTab({
                       <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
-                          style={{ width: `${Math.round((hours / totalHours) * 100)}%`, background: ENTRY_TASK_COLORS[taskLabel as keyof typeof ENTRY_TASK_COLORS] ?? '#9FE1CB' }}
+                          style={{
+                            width: `${Math.round((hours / totalHours) * 100)}%`,
+                            background: ENTRY_TASK_COLORS[taskLabel as keyof typeof ENTRY_TASK_COLORS] ?? '#9FE1CB',
+                          }}
                         />
                       </div>
                       <span className="text-xs text-stone-400 w-8 text-right">{hours.toFixed(1)}h</span>
@@ -492,4 +489,4 @@ function ActividadTab({
       </Card>
     </>
   )
-}
+})

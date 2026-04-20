@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { clientColor, INTERNAL_CLIENT_ROOT_NAME, type Client, type HourEntry } from '@/lib/types'
+import { useCallback, useMemo, useState } from 'react'
+import { clientColor, INTERNAL_CLIENT_ROOT_NAME, type Client } from '@/lib/types'
 import { useHourEntries } from '@/lib/hooks/useHourEntries'
 import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { Tag } from '@/components/ui'
@@ -14,18 +14,21 @@ interface Props {
 export default function HistorialView({ clients, onDataChange }: Props) {
   const [filter, setFilter] = useState('all')
   const { entries, refresh, removeEntry } = useHourEntries()
-  const catalizar = clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
+  const catalizar = useMemo(() => clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME), [clients])
   const { subtopics } = useSubtopics(catalizar?.id ?? null)
 
-  const allEnts = clients
+  // O(1) Maps instead of O(n) .find() inside every .map() iteration
+  const clientsMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients])
+  const subtopicsMap = useMemo(() => new Map(subtopics.map(s => [s.id, s])), [subtopics])
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar este registro?')) return
-
     await removeEntry(id)
     await refresh()
     await onDataChange()
-  }
+  }, [removeEntry, refresh, onDataChange])
+
+  const handleFilterAll = useCallback(() => setFilter('all'), [])
 
   function fmtDate(s: string) {
     return new Date(`${s}T12:00:00`).toLocaleDateString('es-AR', {
@@ -35,27 +38,23 @@ export default function HistorialView({ clients, onDataChange }: Props) {
     })
   }
 
-  const filtered = (filter === 'all'
-    ? entries
-    : entries.filter(e => {
-      if (filter === catalizar?.id) {
-        return e.clientId === filter || e.subtopicId === filter || subtopics.some(s => s.id === e.clientId)
-      }
-      return e.clientId === filter
-    })
-  )
-    .slice()
-    .sort((a, b) => `${b.date}`.localeCompare(`${a.date}`))
+  const filtered = useMemo(() => {
+    const base = filter === 'all'
+      ? entries
+      : entries.filter(e => {
+        if (filter === catalizar?.id) {
+          return e.clientId === filter || subtopics.some(s => s.id === e.clientId)
+        }
+        return e.clientId === filter
+      })
+    return base.slice().sort((a, b) => `${b.date}`.localeCompare(`${a.date}`))
+  }, [filter, entries, catalizar, subtopics])
 
   return (
     <div className="p-4">
       <div className="flex gap-2 flex-wrap mb-4">
-        <Tag
-          label="Todos"
-          selected={filter === 'all'}
-          onClick={() => setFilter('all')}
-        />
-        {allEnts.map(entity => (
+        <Tag label="Todos" selected={filter === 'all'} onClick={handleFilterAll} />
+        {clients.map(entity => (
           <Tag
             key={entity.id}
             label={entity.name}
@@ -69,10 +68,9 @@ export default function HistorialView({ clients, onDataChange }: Props) {
         <p className="text-sm text-stone-400 text-center py-12">Sin registros</p>
       ) : (
         filtered.map(entry => {
-          const entrySubtopic = entry.subtopicId
-            ? subtopics.find(s => s.id === entry.subtopicId)
-            : subtopics.find(s => s.id === entry.clientId)
-          const ent = allEnts.find(c => c.id === entry.clientId)
+          // O(1) lookup via Maps instead of O(n) .find() per entry
+          const entrySubtopic = entry.subtopicId ? subtopicsMap.get(entry.subtopicId) : undefined
+          const ent = clientsMap.get(entry.clientId)
           const entity = entrySubtopic
             ? { id: entrySubtopic.id, name: entrySubtopic.name, colorIndex: 2 }
             : ent
