@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  CLIENT_SERVICE_CATEGORY_LABELS,
   CLIENT_SOURCE_LABELS,
   CLIENT_STATUS_LABELS,
   INTERACTION_TYPE_LABELS,
@@ -153,6 +154,11 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
           {client.sourceType && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-500 font-medium">
               {CLIENT_SOURCE_LABELS[client.sourceType]}
+            </span>
+          )}
+          {client.serviceCategory && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-500 font-medium">
+              {CLIENT_SERVICE_CATEGORY_LABELS[client.serviceCategory]}
             </span>
           )}
           <button
