@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import {
+  CLIENT_SERVICE_CATEGORIES,
+  CLIENT_SERVICE_CATEGORY_LABELS,
   CLIENT_SOURCE_LABELS,
   CLIENT_SOURCE_TYPES,
   CLIENT_STATUS_LABELS,
@@ -11,6 +13,7 @@ import {
   INTERACTION_TYPES,
   clientColor,
   type Client,
+  type ClientServiceCategory,
   type ClientSourceType,
   type ClientInteraction,
   type ClientInteractionInput,
@@ -94,6 +97,42 @@ interface Props {
   onDataChange: () => Promise<void> | void
 }
 
+function DescriptionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  if (editing) return (
+    <div className="mt-3">
+      <Textarea
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        rows={3}
+        placeholder="Rubro, contexto, necesidades..."
+        className="text-xs"
+      />
+      <div className="flex gap-2 mt-1.5">
+        <button onClick={() => { onSave(draft); setEditing(false) }}
+          className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700">Guardar</button>
+        <button onClick={() => { setDraft(value); setEditing(false) }}
+          className="text-[11px] text-stone-400 hover:text-stone-600">Cancelar</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <button
+      onClick={() => { setDraft(value); setEditing(true) }}
+      className="mt-3 w-full text-left"
+    >
+      {value ? (
+        <p className="text-xs text-stone-500 leading-relaxed">{value}</p>
+      ) : (
+        <p className="text-[11px] text-stone-300 italic">+ Agregar descripción</p>
+      )}
+    </button>
+  )
+}
+
 export default function ClientDetailView({ client, entries, onBack, onDataChange }: Props) {
   const col = clientColor(client)
   const { interactions, loading: interLoading, addInteraction, editInteraction, removeInteraction } =
@@ -156,6 +195,20 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
   async function handleSourceChange(newSource: ClientSourceType | '') {
     try {
       await updateClient({ ...client, sourceType: newSource || undefined })
+      await onDataChange()
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
+  }
+
+  async function handleServiceCategoryChange(val: ClientServiceCategory | '') {
+    try {
+      await updateClient({ ...client, serviceCategory: val || undefined })
+      await onDataChange()
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
+  }
+
+  async function handleDescriptionChange(val: string) {
+    try {
+      await updateClient({ ...client, description: val || undefined })
       await onDataChange()
     } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }
@@ -286,6 +339,27 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
               ))}
             </select>
           </div>
+
+          {/* Servicio buscado */}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-[10px] text-stone-400 uppercase tracking-wide">Servicio</span>
+            <select
+              value={client.serviceCategory ?? ''}
+              onChange={e => handleServiceCategoryChange(e.target.value as ClientServiceCategory | '')}
+              className="text-[11px] px-2 py-1 rounded-lg border border-stone-200 text-stone-600 bg-white outline-none cursor-pointer"
+            >
+              <option value="">Sin definir</option>
+              {CLIENT_SERVICE_CATEGORIES.map(c => (
+                <option key={c} value={c}>{CLIENT_SERVICE_CATEGORY_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Descripción */}
+          <DescriptionField
+            value={client.description ?? ''}
+            onSave={handleDescriptionChange}
+          />
 
           {nextAction && (
             <div className="mt-3 flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2">
