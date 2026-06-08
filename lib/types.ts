@@ -26,19 +26,206 @@ export type TaskStatus = 'pendiente' | 'en ejecución' | 'realizada'
 export const TASK_STATUS_CYCLE: TaskStatus[] = ['pendiente', 'en ejecución', 'realizada']
 
 // ─── Recurrence types ────────────────────────────────────────────────────────
-export type RecurType = 'monthly-start' | 'monthly-end' | 'monthly-day' | 'weekly'
+export type RecurType =
+  | 'monthly-start'
+  | 'monthly-end'
+  | 'monthly-day'
+  | 'weekly'
+  | 'monthly-first-weekday'   // primer lunes/martes/etc del mes
+  | 'monthly-last-weekday'    // último lunes/martes/etc del mes
+  | 'monthly-last-bizday'     // último día hábil del mes
 
 // ─── Data models ─────────────────────────────────────────────────────────────
+export type ClientStatus =
+  | 'lead' | 'contacto_inicial' | 'propuesta_enviada' | 'negociacion'
+  | 'confirmado' | 'activo' | 'pausado' | 'inactivo' | 'perdido'
+
+export type ClientSourceType =
+  | 'recomendacion' | 'contacto_propio' | 'web' | 'marketing_web'
+  | 'linkedin' | 'via_cliente' | 'otro'
+
+export const CLIENT_SOURCE_LABELS: Record<ClientSourceType, string> = {
+  recomendacion:  'Recomendación',
+  contacto_propio: 'Contacto propio',
+  web:            'Web',
+  marketing_web:  'Marketing web',
+  linkedin:       'LinkedIn',
+  via_cliente:    'Vía cliente',
+  otro:           'Otro',
+}
+
+export const CLIENT_SOURCE_TYPES: ClientSourceType[] = [
+  'recomendacion', 'contacto_propio', 'web', 'marketing_web', 'linkedin', 'via_cliente', 'otro',
+]
+
+export type ClientServiceCategory =
+  | 'iso9001'
+  | 'auditoria_interna'
+  | 'upgrade_iso2026'
+  | 'apps'
+
+export const CLIENT_SERVICE_CATEGORY_LABELS: Record<ClientServiceCategory, string> = {
+  iso9001:          'Implementación ISO 9001',
+  auditoria_interna: 'Auditoría interna',
+  upgrade_iso2026:  'Upgrade ISO 2026',
+  apps:             'APPs',
+}
+
+export const CLIENT_SERVICE_CATEGORIES: ClientServiceCategory[] = [
+  'iso9001', 'auditoria_interna', 'upgrade_iso2026', 'apps',
+]
+
 export interface Client {
   id: string
   name: string
   rate?: number        // USD per hour
   colorIndex: number
+  status?: ClientStatus
+  sourceType?: ClientSourceType
+  description?: string
+  serviceCategory?: ClientServiceCategory
+  notes?: string
+  sinceDate?: string   // YYYY-MM-DD
+  nextActionDate?: string
+  contactName?: string
+  contactPosition?: string
+  contactEmail?: string
+  contactPhone?: string
 }
 
 export type ClientInput = Omit<Client, 'id'> & {
   id?: string
 }
+
+// ─── Client interactions ──────────────────────────────────────────────────────
+export type InteractionType =
+  | 'reunion' | 'revision_servicio' | 'presupuesto' | 'aumento'
+  | 'propuesta_mejora' | 'reclamo' | 'actualizacion_comercial' | 'definicion_pendiente'
+  | 'email' | 'llamada' | 'whatsapp' | 'seguimiento'
+
+export type InteractionStatus = 'abierto' | 'cerrado'
+export type Priority = 'baja' | 'normal' | 'alta' | 'critica'
+
+export interface ClientInteraction {
+  id: string
+  clientId: string
+  date: string          // YYYY-MM-DD
+  type: InteractionType
+  summary?: string
+  nextSteps?: string
+  status: InteractionStatus
+  priority: Priority
+  nextActionDate?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ClientInteractionInput = Omit<ClientInteraction, 'id' | 'createdAt' | 'updatedAt'> & {
+  id?: string
+}
+
+export const INTERACTION_TYPES: InteractionType[] = [
+  'email', 'llamada', 'whatsapp', 'seguimiento',
+  'reunion', 'revision_servicio', 'presupuesto', 'aumento',
+  'propuesta_mejora', 'reclamo', 'actualizacion_comercial', 'definicion_pendiente',
+]
+
+export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
+  email:                   'Email',
+  llamada:                 'Llamada',
+  whatsapp:                'WhatsApp',
+  seguimiento:             'Seguimiento',
+  reunion:                 'Reunión',
+  revision_servicio:       'Revisión de servicio',
+  presupuesto:             'Presupuesto',
+  aumento:                 'Aumento',
+  propuesta_mejora:        'Propuesta de mejora',
+  reclamo:                 'Reclamo',
+  actualizacion_comercial: 'Actualización comercial',
+  definicion_pendiente:    'Definición pendiente',
+}
+
+export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
+  lead:               'Lead',
+  contacto_inicial:   'Contacto inicial',
+  propuesta_enviada:  'Propuesta enviada',
+  negociacion:        'Negociación',
+  confirmado:         'Confirmado',
+  activo:             'Activo',
+  pausado:            'Pausado',
+  inactivo:           'Inactivo',
+  perdido:            'Perdido',
+}
+
+// ─── Ideas & Backlog ──────────────────────────────────────────────────────────
+export type IdeaItemType = 'idea' | 'backlog'
+
+export const IDEA_ITEM_TYPE_LABELS: Record<IdeaItemType, string> = {
+  idea:    'Idea',
+  backlog: 'Backlog',
+}
+
+export type IdeaCategory =
+  | 'app_nueva' | 'mejora_app' | 'automatizacion' | 'ia'
+  | 'proceso_interno' | 'servicio_nuevo' | 'contenido' | 'tecnico'
+
+export type IdeaStatus =
+  | 'nueva' | 'en_revision' | 'aprobada' | 'en_progreso'
+  | 'pausada' | 'descartada' | 'implementada'
+
+export type ImpactLevel = 'bajo' | 'medio' | 'alto'
+
+export interface Idea {
+  id: string
+  itemType: IdeaItemType
+  clientId?: string | null
+  subtopicId?: string | null
+  title: string
+  description?: string
+  category?: IdeaCategory
+  impactEstimated?: ImpactLevel
+  effortEstimated?: ImpactLevel
+  priority: Priority
+  status: IdeaStatus
+  dueDate?: string       // YYYY-MM-DD — plazo de ejecución
+  nextStep?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type IdeaInput = Omit<Idea, 'id' | 'createdAt' | 'updatedAt'> & {
+  id?: string
+}
+
+export const IDEA_CATEGORIES: IdeaCategory[] = [
+  'app_nueva', 'mejora_app', 'automatizacion', 'ia',
+  'proceso_interno', 'servicio_nuevo', 'contenido', 'tecnico',
+]
+
+export const IDEA_CATEGORY_LABELS: Record<IdeaCategory, string> = {
+  app_nueva:        'App nueva',
+  mejora_app:       'Mejora de app',
+  automatizacion:   'Automatización',
+  ia:               'IA',
+  proceso_interno:  'Proceso interno',
+  servicio_nuevo:   'Servicio nuevo',
+  contenido:        'Contenido',
+  tecnico:          'Técnico',
+}
+
+export const IDEA_STATUS_LABELS: Record<IdeaStatus, string> = {
+  nueva:        'Nueva',
+  en_revision:  'En revisión',
+  aprobada:     'Aprobada',
+  en_progreso:  'En progreso',
+  pausada:      'Pausada',
+  descartada:   'Descartada',
+  implementada: 'Implementada',
+}
+
+export type EntryType = 'operativo' | 'comercial'
 
 export interface HourEntry {
   id: string
@@ -50,6 +237,7 @@ export interface HourEntry {
   detail?: string
   hours: number
   date: string         // YYYY-MM-DD
+  entryType?: EntryType
   createdAt: string
 }
 

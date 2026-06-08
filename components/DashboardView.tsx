@@ -21,7 +21,7 @@ import {
   SectionTitle,
 } from '@/components/ui'
 
-type DashTab = 'mes' | 'cliente' | 'actividad'
+type DashTab = 'mes' | 'cliente' | 'actividad' | 'historial'
 interface Props {
   clients: Client[]
 }
@@ -122,7 +122,7 @@ export default function DashboardView({ clients }: Props) {
   return (
     <div className="p-4">
       <div className="flex gap-0.5 bg-stone-100 rounded-lg p-0.5 mb-4">
-        {(['mes', 'cliente', 'actividad'] as DashTab[]).map(item => (
+        {(['mes', 'cliente', 'actividad', 'historial'] as DashTab[]).map(item => (
           <button
             key={item}
             onClick={() => setTab(item)}
@@ -132,7 +132,7 @@ export default function DashboardView({ clients }: Props) {
                 : 'text-stone-400'
             }`}
           >
-            {item === 'mes' ? 'Por mes' : item === 'cliente' ? 'Por cliente' : 'Por actividad'}
+            {item === 'mes' ? 'Mes' : item === 'cliente' ? 'Cliente' : item === 'actividad' ? 'Actividad' : 'Historial'}
           </button>
         ))}
       </div>
@@ -167,6 +167,14 @@ export default function DashboardView({ clients }: Props) {
           setPeriod={setActPeriod}
           refMonth={month}
           refYear={year}
+          allEnts={clients}
+          entries={entries}
+          internalIds={internalIds}
+        />
+      )}
+
+      {tab === 'historial' && (
+        <HistorialTab
           allEnts={clients}
           entries={entries}
           internalIds={internalIds}
@@ -316,9 +324,25 @@ const ClienteTab = memo(function ClienteTab({
   entries: any[]
   internalIds: Set<string>
 }) {
+  const [localMonth, setLocalMonth] = useState(refMonth)
+  const [localYear, setLocalYear] = useState(refYear)
+  const [clientFilter, setClientFilter] = useState('')
+
+  const changeMonth = useCallback((delta: number) => {
+    setLocalMonth(prev => {
+      let next = prev + delta
+      if (next < 0) { setLocalYear(y => y - 1); return 11 }
+      if (next > 11) { setLocalYear(y => y + 1); return 0 }
+      return next
+    })
+  }, [])
+
+  const activeMonth = period === 'mes' ? localMonth : refMonth
+  const activeYear  = period === 'mes' ? localYear  : refYear
+
   const data = useMemo(
-    () => entriesForPeriod(entries, period, refMonth, refYear),
-    [entries, period, refMonth, refYear]
+    () => entriesForPeriod(entries, period, activeMonth, activeYear),
+    [entries, period, activeMonth, activeYear]
   )
 
   const { sorted, totalAll } = useMemo(() => {
@@ -334,13 +358,51 @@ const ClienteTab = memo(function ClienteTab({
     return { sorted, totalAll: sorted.reduce((sum, [, v]) => sum + v.hours, 0) }
   }, [data, internalIds])
 
+  const filtered = useMemo(() => {
+    if (!clientFilter) return sorted
+    const q = clientFilter.toLowerCase()
+    return sorted.filter(([id]) => {
+      const ent = id === INTERNAL_CLIENT_ROOT_NAME
+        ? INTERNAL_CLIENT_ROOT_NAME
+        : (allEnts.find(c => c.id === id)?.name ?? id)
+      return ent.toLowerCase().includes(q)
+    })
+  }, [sorted, clientFilter, allEnts])
+
   return (
     <>
-      <PeriodFilter value={period} onChange={setPeriod} />
-      {!sorted.length ? (
+      <PeriodFilter value={period} onChange={p => { setPeriod(p) }} />
+
+      {period === 'mes' && (
+        <div className="flex items-center mb-3">
+          <button onClick={() => changeMonth(-1)} className="text-stone-400 px-2 text-xl">‹</button>
+          <span className="flex-1 text-center text-sm font-medium text-stone-800">
+            {MONTHS_FULL[localMonth]} {localYear}
+          </span>
+          <button onClick={() => changeMonth(1)} className="text-stone-400 px-2 text-xl">›</button>
+        </div>
+      )}
+
+      <div className="relative mb-3">
+        <input
+          type="text"
+          value={clientFilter}
+          onChange={e => setClientFilter(e.target.value)}
+          placeholder="Filtrar cliente..."
+          className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg bg-white text-stone-800 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
+        />
+        {clientFilter && (
+          <button
+            onClick={() => setClientFilter('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 text-lg leading-none"
+          >×</button>
+        )}
+      </div>
+
+      {!filtered.length ? (
         <p className="text-sm text-stone-400 text-center py-8">Sin registros en este período</p>
       ) : (
-        sorted.map(([id, data]) => {
+        filtered.map(([id, data]) => {
           const ent = id === INTERNAL_CLIENT_ROOT_NAME
             ? { id: 'internal-root', name: INTERNAL_CLIENT_ROOT_NAME, colorIndex: 4 }
             : allEnts.find(item => item.id === id)
@@ -487,6 +549,167 @@ const ActividadTab = memo(function ActividadTab({
           })
         )}
       </Card>
+    </>
+  )
+})
+
+// ─── Historial Tab ────────────────────────────────────────────────────────────
+
+function getLast12Months(): { month: number; year: number; label: string }[] {
+  const result = []
+  const now = new Date()
+  for (let i = 11; i >= 0; i--) {
+    let m = now.getMonth() - i
+    let y = now.getFullYear()
+    if (m < 0) { m += 12; y -= 1 }
+    result.push({ month: m, year: y, label: MONTHS_SHORT[m] + ' ' + String(y).slice(2) })
+  }
+  return result
+}
+
+const HistorialTab = memo(function HistorialTab({
+  allEnts,
+  entries,
+  internalIds,
+}: {
+  allEnts: Client[]
+  entries: any[]
+  internalIds: Set<string>
+}) {
+  const [numMonths, setNumMonths] = useState<6 | 12>(6)
+  const months = useMemo(() => getLast12Months().slice(numMonths === 6 ? 6 : 0), [numMonths])
+
+  const { rows, totals } = useMemo(() => {
+    const byClient: Record<string, Record<string, number>> = {}
+    entries.forEach(entry => {
+      const [y, m] = entry.date.split('-').map(Number)
+      const key = `${y}-${String(m).padStart(2, '0')}`
+      const clientKey = internalIds.has(entry.clientId) ? INTERNAL_CLIENT_ROOT_NAME : entry.clientId
+      byClient[clientKey] = byClient[clientKey] || {}
+      byClient[clientKey][key] = (byClient[clientKey][key] || 0) + entry.hours
+    })
+
+    const monthKeys = months.map(({ month, year }) => `${year}-${String(month + 1).padStart(2, '0')}`)
+
+    const rows = Object.entries(byClient)
+      .map(([id, mMap]) => ({
+        id,
+        total: monthKeys.reduce((s, k) => s + (mMap[k] ?? 0), 0),
+        values: monthKeys.map(k => mMap[k] ?? 0),
+      }))
+      .filter(r => r.total > 0)
+      .sort((a, b) => b.total - a.total)
+
+    const totals = monthKeys.map((_, i) => rows.reduce((s, r) => s + r.values[i], 0))
+
+    return { rows, totals }
+  }, [entries, months, internalIds])
+
+  const maxVal = useMemo(() => Math.max(...rows.flatMap(r => r.values), 1), [rows])
+
+  return (
+    <>
+      <div className="flex gap-1 mb-3">
+        {([6, 12] as const).map(n => (
+          <button
+            key={n}
+            onClick={() => setNumMonths(n)}
+            className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${
+              numMonths === n
+                ? 'bg-accent text-white font-medium'
+                : 'bg-stone-100 text-stone-400'
+            }`}
+          >
+            {n} meses
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto -mx-4 px-4">
+        <table className="w-full text-xs border-collapse" style={{ minWidth: `${months.length * 52 + 100}px` }}>
+          <thead>
+            <tr>
+              <th className="text-left text-stone-400 font-normal pb-2 pr-2 sticky left-0 bg-white z-10 min-w-[90px]">
+                Cliente
+              </th>
+              {months.map(({ month, year, label }) => (
+                <th
+                  key={`${year}-${month}`}
+                  className="text-center text-stone-400 font-normal pb-2 px-1 min-w-[48px]"
+                >
+                  {label}
+                </th>
+              ))}
+              <th className="text-right text-stone-400 font-normal pb-2 pl-2 min-w-[40px]">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!rows.length ? (
+              <tr>
+                <td colSpan={months.length + 2} className="text-center text-stone-400 py-8">
+                  Sin registros
+                </td>
+              </tr>
+            ) : (
+              rows.map(row => {
+                const ent = row.id === INTERNAL_CLIENT_ROOT_NAME
+                  ? { id: 'internal-root', name: INTERNAL_CLIENT_ROOT_NAME, colorIndex: 4 }
+                  : allEnts.find(c => c.id === row.id)
+                const col = clientColor(ent)
+                const name = ent?.name ?? row.id
+
+                return (
+                  <tr key={row.id} className="border-t border-stone-100">
+                    <td className="py-2 pr-2 sticky left-0 bg-white z-10">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: col.dot }} />
+                        <span className="truncate text-stone-700 max-w-[72px]">{name}</span>
+                      </div>
+                    </td>
+                    {row.values.map((val, i) => (
+                      <td key={i} className="text-center px-1 py-2">
+                        {val > 0 ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div
+                              className="w-7 rounded-sm mx-auto"
+                              style={{
+                                height: `${Math.max(3, Math.round((val / maxVal) * 20))}px`,
+                                background: col.dot,
+                                opacity: 0.7,
+                              }}
+                            />
+                            <span className="text-stone-600">{val % 1 === 0 ? val : val.toFixed(1)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-stone-200">—</span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="text-right pl-2 py-2 font-medium text-stone-700">
+                      {row.total % 1 === 0 ? row.total : row.total.toFixed(1)}h
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 border-stone-200">
+                <td className="py-2 pr-2 sticky left-0 bg-white z-10 text-stone-500 font-medium">Total</td>
+                {totals.map((t, i) => (
+                  <td key={i} className="text-center px-1 py-2 font-medium text-stone-600">
+                    {t > 0 ? (t % 1 === 0 ? t : t.toFixed(1)) : <span className="text-stone-200">—</span>}
+                  </td>
+                ))}
+                <td className="text-right pl-2 py-2 font-medium text-stone-800">
+                  {totals.reduce((s, t) => s + t, 0).toFixed(1)}h
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
     </>
   )
 })

@@ -8,7 +8,7 @@ function mapTask(row: any): Task {
   return {
     id: row.id,
     title: row.title,
-    desc: row.desc ?? undefined,
+    desc: row.description ?? undefined,
     date: row.date,
     originalDate: row.original_date,
     status: row.status,
@@ -53,7 +53,7 @@ export async function upsertTask(task: TaskInput): Promise<void> {
   const payload: {
     id?: string
     title: string
-    desc: string | null
+    description: string | null
     date: string
     original_date: string
     status: Task['status']
@@ -63,7 +63,7 @@ export async function upsertTask(task: TaskInput): Promise<void> {
     owner_id: string
   } = {
     title: task.title,
-    desc: task.desc ?? null,
+    description: task.desc ?? null,
     date: task.date,
     original_date: task.originalDate,
     status: task.status,
@@ -131,8 +131,29 @@ export async function syncRecurringTasks(): Promise<void> {
       } else if (def.type === 'monthly-end') {
         const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
         match = d.getDate() === last
+      } else if (def.type === 'monthly-last-bizday') {
+        // último día de la semana (lun-vie) del mes
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+        while (lastDay.getDay() === 0 || lastDay.getDay() === 6) lastDay.setDate(lastDay.getDate() - 1)
+        match = toDateStr(d) === toDateStr(lastDay)
       } else if (def.type === 'monthly-day') {
         match = def.day !== undefined && d.getDate() === def.day
+      } else if (def.type === 'monthly-first-weekday') {
+        // primer día de semana específico del mes (ej: primer lunes)
+        if (def.weekday !== undefined) {
+          const first = new Date(d.getFullYear(), d.getMonth(), 1)
+          const diff = (def.weekday - first.getDay() + 7) % 7
+          const target = new Date(d.getFullYear(), d.getMonth(), 1 + diff)
+          match = toDateStr(d) === toDateStr(target)
+        }
+      } else if (def.type === 'monthly-last-weekday') {
+        // último día de semana específico del mes (ej: último viernes)
+        if (def.weekday !== undefined) {
+          const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+          const diff = (last.getDay() - def.weekday + 7) % 7
+          const target = new Date(d.getFullYear(), d.getMonth() + 1, 0 - diff)
+          match = toDateStr(d) === toDateStr(target)
+        }
       } else if (def.type === 'weekly') {
         match = def.weekday !== undefined && d.getDay() === def.weekday
       }

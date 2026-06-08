@@ -6,6 +6,8 @@ import {
   INTERNAL_CLIENT_SUBTOPICS,
   type Client,
   type ClientInput,
+  type ClientServiceCategory,
+  type ClientSourceType,
 } from '@/lib/types'
 
 const TABLE = 'clients'
@@ -16,6 +18,17 @@ function mapClient(row: any): Client {
     name: row.name,
     rate: row.rate ?? undefined,
     colorIndex: row.color_index ?? 0,
+    status: row.status ?? undefined,
+    sourceType: (row.source_type as ClientSourceType) ?? undefined,
+    description: row.description ?? undefined,
+    serviceCategory: (row.service_category as ClientServiceCategory) ?? undefined,
+    notes: row.notes ?? undefined,
+    sinceDate: row.since_date ?? undefined,
+    nextActionDate: row.next_action_date ?? undefined,
+    contactName: row.contact_name ?? undefined,
+    contactPosition: row.contact_position ?? undefined,
+    contactEmail: row.contact_email ?? undefined,
+    contactPhone: row.contact_phone ?? undefined,
   }
 }
 
@@ -55,11 +68,19 @@ export async function upsertClient(client: ClientInput): Promise<void> {
 
   const profile = await getCurrentProfile()
 
-  const payload: { id?: string; name: string; rate: number | null; color_index: number; owner_id: string } = {
+  const payload: Record<string, any> = {
     name: client.name,
     rate: client.rate ?? null,
     color_index: client.colorIndex ?? 0,
     owner_id: profile.id,
+    status: client.status ?? null,
+    source_type: client.sourceType ?? null,
+    description: client.description ?? null,
+    service_category: client.serviceCategory ?? null,
+    contact_name: client.contactName ?? null,
+    contact_position: client.contactPosition ?? null,
+    contact_email: client.contactEmail ?? null,
+    contact_phone: client.contactPhone ?? null,
   }
 
   if (client.id) {
@@ -72,6 +93,31 @@ export async function upsertClient(client: ClientInput): Promise<void> {
 
   if (error) {
     console.error('Error upserting client:', error)
+    throw error
+  }
+}
+
+export async function updateClient(client: Client): Promise<void> {
+  const payload: Record<string, any> = { updated_at: new Date().toISOString() }
+
+  if (client.rate !== undefined)            payload.rate             = client.rate
+  if (client.colorIndex !== undefined)      payload.color_index      = client.colorIndex
+  if (client.status !== undefined)          payload.status           = client.status
+  if (client.sourceType !== undefined)      payload.source_type      = client.sourceType
+  if (client.description !== undefined)     payload.description      = client.description
+  if (client.serviceCategory !== undefined) payload.service_category = client.serviceCategory
+  if (client.notes !== undefined)           payload.notes            = client.notes
+  if (client.sinceDate !== undefined)       payload.since_date       = client.sinceDate
+  if (client.nextActionDate !== undefined)  payload.next_action_date = client.nextActionDate
+  if (client.contactName !== undefined)     payload.contact_name     = client.contactName
+  if (client.contactPosition !== undefined) payload.contact_position = client.contactPosition
+  if (client.contactEmail !== undefined)    payload.contact_email    = client.contactEmail
+  if (client.contactPhone !== undefined)    payload.contact_phone    = client.contactPhone
+
+  const { error } = await supabase.from(TABLE).update(payload).eq('id', client.id)
+
+  if (error) {
+    console.error('Error updating client:', error)
     throw error
   }
 }

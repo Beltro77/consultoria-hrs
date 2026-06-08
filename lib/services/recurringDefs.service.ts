@@ -7,7 +7,7 @@ function mapRecurringDef(row: any): RecurDef {
   return {
     id: row.id,
     title: row.title,
-    desc: row.desc ?? undefined,
+    desc: row.description ?? undefined,
     type: row.type,
     day: row.day ?? undefined,
     weekday: row.weekday ?? undefined,
@@ -53,7 +53,7 @@ export async function upsertRecurringDef(def: RecurDefInput): Promise<void> {
   const payload: {
     id?: string
     title: string
-    desc: string | null
+    description: string | null
     type: RecurDef['type']
     day: number | null
     weekday: number | null
@@ -63,7 +63,7 @@ export async function upsertRecurringDef(def: RecurDefInput): Promise<void> {
     owner_id: string
   } = {
     title: def.title,
-    desc: def.desc ?? null,
+    description: def.desc ?? null,
     type: def.type,
     day: def.day ?? null,
     weekday: def.weekday ?? null,

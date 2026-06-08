@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BottomSheet, Btn, Input, Label, Select, Tag, Textarea } from '@/components/ui'
 import { upsertTask, syncRecurringTasks } from '@/lib/services/tasks.service'
 import { upsertRecurringDef } from '@/lib/services/recurringDefs.service'
@@ -20,6 +20,13 @@ export default function TaskModal({ open, onClose, onSaved, defaultDate }: Props
   const [date, setDate]     = useState(defaultDate)
   const [recurType, setRecurType] = useState('monthly-start')
   const [recurStart, setRecurStart] = useState(defaultDate)
+
+  useEffect(() => {
+    if (open) {
+      setDate(defaultDate)
+      setRecurStart(defaultDate)
+    }
+  }, [open, defaultDate])
 
   async function handleSave() {
     if (!title.trim()) { alert('Ingresá un título'); return }
@@ -88,7 +95,10 @@ export default function TaskModal({ open, onClose, onSaved, defaultDate }: Props
           <Select value={recurType} onChange={e => setRecurType(e.target.value)}>
             <option value="monthly-start">Inicio de mes</option>
             <option value="monthly-end">Fin de mes</option>
+            <option value="monthly-last-bizday">Último día hábil del mes</option>
             <option value="monthly-day">Mensual (mismo día)</option>
+            <option value="monthly-first-weekday">Primer lunes/martes/… del mes</option>
+            <option value="monthly-last-weekday">Último lunes/martes/… del mes</option>
             <option value="weekly">Semanal (mismo día de semana)</option>
           </Select>
           <Label>Primera ocurrencia</Label>
