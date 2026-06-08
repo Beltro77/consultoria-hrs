@@ -7,6 +7,7 @@ import {
   INTERNAL_CLIENT_ROOT_NAME,
   clientColor,
   todayStr,
+  effectiveDate,
   TASK_STATUS_CYCLE,
   type Client,
   type Task,
@@ -28,7 +29,7 @@ interface Props {
 
 function buildTaskMap(tasks: Task[]): Record<string, Task[]> {
   return tasks.reduce((acc, task) => {
-    const key = task.date
+    const key = effectiveDate(task)
     acc[key] = acc[key] || []
     acc[key].push(task)
     return acc

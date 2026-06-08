@@ -9,15 +9,17 @@ import CalendarView from '@/components/CalendarView'
 import DashboardView from '@/components/DashboardView'
 import HistorialView from '@/components/HistorialView'
 import ClientesView from '@/components/ClientesView'
+import IdeasView from '@/components/IdeasView'
 import { Btn, Input, Label } from '@/components/ui'
 
-type Tab = 'calendario' | 'dashboard' | 'historial' | 'clientes'
+type Tab = 'calendario' | 'dashboard' | 'historial' | 'clientes' | 'ideas'
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: 'calendario', label: 'Calendario', icon: '📅' },
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'historial', label: 'Historial', icon: '📋' },
   { id: 'clientes', label: 'Clientes', icon: '👤' },
+  { id: 'ideas', label: 'Ideas', icon: '💡' },
 ]
 
 function LoginScreen({ onSignedIn }: { onSignedIn: (session: Session | null) => void }) {
@@ -150,6 +152,7 @@ function AuthenticatedApp() {
         {tab === 'dashboard' && <DashboardView clients={clients} />}
         {tab === 'historial' && <HistorialView clients={clients} onDataChange={refresh} />}
         {tab === 'clientes' && <ClientesView clients={clients} onDataChange={refresh} onDeleteClient={removeClient} />}
+        {tab === 'ideas' && <IdeasView />}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 z-10 safe-area-inset-bottom">

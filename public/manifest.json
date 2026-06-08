@@ -1,6 +1,6 @@
 {
-  "name": "Consultoría Hrs",
-  "short_name": "Hrs",
+  "name": "Catalizar",
+  "short_name": "Catalizar",
   "description": "Seguimiento de horas y tareas de consultoría",
   "start_url": "/",
   "scope": "/",
