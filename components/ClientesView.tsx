@@ -161,6 +161,11 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
               {CLIENT_SERVICE_CATEGORY_LABELS[client.serviceCategory]}
             </span>
           )}
+          {client.nextActionDate && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+              🔁 {client.nextActionDate}
+            </span>
+          )}
           <button
             onClick={() => onOpenDetail(client)}
             className="ml-auto text-[10px] text-stone-400 hover:text-emerald-600 font-medium"

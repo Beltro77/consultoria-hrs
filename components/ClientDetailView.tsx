@@ -213,6 +213,13 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
     } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }
 
+  async function handleFollowUpChange(date: string) {
+    try {
+      await updateClient({ ...client, nextActionDate: date || undefined })
+      await onDataChange()
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
+  }
+
   async function handleSaveNotes() {
     try { await updateClient({ ...client, notes: notesValue }); setNotesEdit(false); await onDataChange() }
     catch (err) { alert(`Error: ${(err as Error)?.message}`) }
@@ -360,6 +367,24 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
             value={client.description ?? ''}
             onSave={handleDescriptionChange}
           />
+
+          {/* Revisitar en (follow-up para perdidos/potenciales) */}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-[10px] text-stone-400 uppercase tracking-wide">Revisitar</span>
+            <input
+              type="date"
+              value={client.nextActionDate ?? ''}
+              onChange={e => handleFollowUpChange(e.target.value)}
+              className="text-[11px] px-2 py-1 rounded-lg border border-stone-200 text-stone-600 bg-white outline-none cursor-pointer"
+            />
+            {client.nextActionDate && (
+              <button
+                onClick={() => handleFollowUpChange('')}
+                className="text-[10px] text-stone-300 hover:text-red-400"
+                title="Quitar fecha"
+              >✕</button>
+            )}
+          </div>
 
           {nextAction && (
             <div className="mt-3 flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2">
