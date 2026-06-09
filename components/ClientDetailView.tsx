@@ -201,6 +201,8 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
   const { subtopics } = useSubtopics(client.id)
   const { ideas, addIdea, editIdea } = useIdeas()
 
+  const isActive = ['activo', 'confirmado', 'pausado', 'inactivo'].includes(client.status ?? '')
+
   const [interactionModal, setInteractionModal] = useState(false)
   const [editingInteraction, setEditingInteraction] = useState<ClientInteraction | null>(null)
   const [interactionForm, setInteractionForm] = useState(EMPTY_INTERACTION)
@@ -470,6 +472,7 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
           await onDataChange()
         }} />
 
+        {isActive && (<>
         {/* Horas últimos 6 meses */}
         <div className="bg-white border border-stone-200 rounded-xl p-4">
           <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide mb-3">
@@ -613,6 +616,7 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
             ))
           )}
         </div>
+        </>)}
 
         {/* Historial comercial */}
         <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
