@@ -30,6 +30,7 @@ import { useClientInteractions } from '@/lib/hooks/useClientInteractions'
 import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { useIdeas } from '@/lib/hooks/useIdeas'
 import { updateClient } from '@/lib/services/clients.service'
+import { syncRevisitarTask } from '@/lib/services/tasks.service'
 import { Avatar, Btn, BottomSheet, Input, Label, Select, Textarea } from '@/components/ui'
 
 const STATUS_BADGE: Record<ClientStatus, string> = {
@@ -285,6 +286,7 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
   async function handleFollowUpChange(date: string) {
     try {
       await updateClient({ ...client, nextActionDate: date || undefined })
+      await syncRevisitarTask(client.name, date || undefined)
       await onDataChange()
     } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }

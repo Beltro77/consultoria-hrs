@@ -87,6 +87,30 @@ export async function upsertTask(task: TaskInput): Promise<void> {
   }
 }
 
+export async function syncRevisitarTask(clientName: string, date: string | undefined): Promise<void> {
+  const profile = await getCurrentProfile()
+  const title = `Revisitar: ${clientName}`
+
+  // Delete any existing revisitar task for this client
+  await supabase
+    .from(TABLE)
+    .delete()
+    .eq('owner_id', profile.id)
+    .eq('title', title)
+    .eq('type', 'puntual')
+
+  if (date) {
+    await upsertTask({
+      title,
+      date,
+      originalDate: date,
+      status: 'pendiente',
+      type: 'puntual',
+      createdAt: new Date().toISOString(),
+    })
+  }
+}
+
 export async function deleteTask(id: string): Promise<void> {
   const { error } = await supabase
     .from(TABLE)
