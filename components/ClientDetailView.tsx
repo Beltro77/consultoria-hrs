@@ -133,6 +133,67 @@ function DescriptionField({ value, onSave }: { value: string; onSave: (v: string
   )
 }
 
+function ContactSection({ client, onSave }: {
+  client: Client
+  onSave: (fields: Partial<Client>) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName]     = useState(client.contactName ?? '')
+  const [email, setEmail]   = useState(client.contactEmail ?? '')
+  const [phone, setPhone]   = useState(client.contactPhone ?? '')
+  const [web, setWeb]       = useState(client.website ?? '')
+
+  async function handleSave() {
+    await onSave({
+      contactName: name.trim() || undefined,
+      contactEmail: email.trim() || undefined,
+      contactPhone: phone.trim() || undefined,
+      website: web.trim() || undefined,
+    })
+    setEditing(false)
+  }
+
+  const hasData = client.contactName || client.contactEmail || client.contactPhone || client.website
+
+  if (!editing) return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">Contacto</p>
+        <button onClick={() => { setName(client.contactName ?? ''); setEmail(client.contactEmail ?? ''); setPhone(client.contactPhone ?? ''); setWeb(client.website ?? ''); setEditing(true) }}
+          className="text-[11px] text-stone-400 hover:text-emerald-600">
+          {hasData ? 'Editar' : '+ Agregar'}
+        </button>
+      </div>
+      {hasData ? (
+        <div className="space-y-1.5">
+          {client.contactName  && <p className="text-xs text-stone-700">{client.contactName}</p>}
+          {client.contactEmail && <a href={`mailto:${client.contactEmail}`} className="block text-xs text-sky-500">{client.contactEmail}</a>}
+          {client.contactPhone && <a href={`tel:${client.contactPhone}`} className="block text-xs text-stone-500">{client.contactPhone}</a>}
+          {client.website      && <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank" rel="noopener noreferrer" className="block text-xs text-sky-500">{client.website}</a>}
+        </div>
+      ) : (
+        <p className="text-[11px] text-stone-300 italic">Sin datos de contacto</p>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide mb-3">Contacto</p>
+      <div className="space-y-2">
+        <Input value={name}  onChange={e => setName(e.target.value)}  placeholder="Nombre del contacto" />
+        <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" />
+        <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Celular / WhatsApp" />
+        <Input value={web}   onChange={e => setWeb(e.target.value)}   placeholder="Página web" />
+      </div>
+      <div className="flex gap-3 mt-3">
+        <button onClick={handleSave} className="text-[11px] font-medium text-emerald-600 hover:text-emerald-700">Guardar</button>
+        <button onClick={() => setEditing(false)} className="text-[11px] text-stone-400 hover:text-stone-600">Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
 export default function ClientDetailView({ client, entries, onBack, onDataChange }: Props) {
   const col = clientColor(client)
   const { interactions, loading: interLoading, addInteraction, editInteraction, removeInteraction } =
@@ -402,6 +463,12 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
             </p>
           )}
         </div>
+
+        {/* Contacto */}
+        <ContactSection client={client} onSave={async (fields) => {
+          await updateClient({ ...client, ...fields })
+          await onDataChange()
+        }} />
 
         {/* Horas últimos 6 meses */}
         <div className="bg-white border border-stone-200 rounded-xl p-4">

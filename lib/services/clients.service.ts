@@ -29,6 +29,7 @@ function mapClient(row: any): Client {
     contactPosition: row.contact_position ?? undefined,
     contactEmail: row.contact_email ?? undefined,
     contactPhone: row.contact_phone ?? undefined,
+    website: row.website ?? undefined,
   }
 }
 
@@ -113,6 +114,7 @@ export async function updateClient(client: Client): Promise<void> {
   if (client.contactPosition !== undefined) payload.contact_position = client.contactPosition
   if (client.contactEmail !== undefined)    payload.contact_email    = client.contactEmail
   if (client.contactPhone !== undefined)    payload.contact_phone    = client.contactPhone
+  if (client.website !== undefined)         payload.website          = client.website
 
   const { error } = await supabase.from(TABLE).update(payload).eq('id', client.id)
 

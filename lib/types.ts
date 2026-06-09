@@ -91,6 +91,7 @@ export interface Client {
   contactPosition?: string
   contactEmail?: string
   contactPhone?: string
+  website?: string
 }
 
 export type ClientInput = Omit<Client, 'id'> & {
