@@ -74,8 +74,6 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
   const h = entries.filter(e => e.clientId === client.id).reduce((a, e) => a + e.hours, 0)
   const earned = client.rate ? h * client.rate : null
   const status = client.status ?? 'activo'
-  const openCount = interactions.filter(i => i.status === 'abierto').length
-
   async function handleStatusChange(newStatus: ClientStatus) {
     try { await updateClient({ ...client, status: newStatus }); await onDataChange() }
     catch (err) { alert(`Error: ${(err as Error)?.message}`) }
@@ -131,7 +129,6 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
             <p className="text-xs text-stone-400 mt-0.5">
               {h.toFixed(1)} hs{client.rate ? ` · $${client.rate}/h` : ''}
               {earned !== null ? ` · $${earned.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : ''}
-              {openCount > 0 && <span className="ml-1.5 text-amber-500">· {openCount} abierta{openCount > 1 ? 's' : ''}</span>}
             </p>
           </button>
           <button onClick={onDelete} className="text-xs text-red-400 hover:text-red-600 flex-shrink-0">
@@ -208,7 +205,7 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
                 <span className="text-[10px] text-stone-400">{i.date}</span>
               </div>
               {i.summary && <p className="text-xs text-stone-500 mt-0.5 line-clamp-1">{i.summary}</p>}
-              {i.nextActionDate && i.status === 'abierto' && (
+              {i.nextActionDate && (
                 <p className="text-[10px] text-amber-500 mt-0.5">📅 {i.nextActionDate}</p>
               )}
             </div>

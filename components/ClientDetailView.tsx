@@ -23,7 +23,6 @@ import {
   type IdeaInput,
   type IdeaItemType,
   type IdeaStatus,
-  type InteractionStatus,
   type InteractionType,
   type Priority,
 } from '@/lib/types'
@@ -82,7 +81,7 @@ const EMPTY_INTERACTION: Omit<ClientInteractionInput, 'clientId'> = {
   type: 'reunion',
   summary: '',
   nextSteps: '',
-  status: 'abierto',
+  status: 'abierto', // kept for DB compatibility, not shown in UI
   priority: 'normal',
   nextActionDate: '',
   notes: '',
@@ -139,6 +138,7 @@ function ContactSection({ client, onSave }: {
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName]     = useState(client.contactName ?? '')
+  const [role, setRole]     = useState(client.contactPosition ?? '')
   const [email, setEmail]   = useState(client.contactEmail ?? '')
   const [phone, setPhone]   = useState(client.contactPhone ?? '')
   const [web, setWeb]       = useState(client.website ?? '')
@@ -146,6 +146,7 @@ function ContactSection({ client, onSave }: {
   async function handleSave() {
     await onSave({
       contactName: name.trim() || undefined,
+      contactPosition: role.trim() || undefined,
       contactEmail: email.trim() || undefined,
       contactPhone: phone.trim() || undefined,
       website: web.trim() || undefined,
@@ -153,20 +154,25 @@ function ContactSection({ client, onSave }: {
     setEditing(false)
   }
 
-  const hasData = client.contactName || client.contactEmail || client.contactPhone || client.website
+  const hasData = client.contactName || client.contactPosition || client.contactEmail || client.contactPhone || client.website
 
   if (!editing) return (
     <div className="bg-white border border-stone-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">Contacto</p>
-        <button onClick={() => { setName(client.contactName ?? ''); setEmail(client.contactEmail ?? ''); setPhone(client.contactPhone ?? ''); setWeb(client.website ?? ''); setEditing(true) }}
+        <button onClick={() => { setName(client.contactName ?? ''); setRole(client.contactPosition ?? ''); setEmail(client.contactEmail ?? ''); setPhone(client.contactPhone ?? ''); setWeb(client.website ?? ''); setEditing(true) }}
           className="text-[11px] text-stone-400 hover:text-emerald-600">
           {hasData ? 'Editar' : '+ Agregar'}
         </button>
       </div>
       {hasData ? (
         <div className="space-y-1.5">
-          {client.contactName  && <p className="text-xs text-stone-700">{client.contactName}</p>}
+          {client.contactName && (
+            <p className="text-xs text-stone-700 font-medium">
+              {client.contactName}
+              {client.contactPosition && <span className="text-stone-400 font-normal"> · {client.contactPosition}</span>}
+            </p>
+          )}
           {client.contactEmail && <a href={`mailto:${client.contactEmail}`} className="block text-xs text-sky-500">{client.contactEmail}</a>}
           {client.contactPhone && <a href={`tel:${client.contactPhone}`} className="block text-xs text-stone-500">{client.contactPhone}</a>}
           {client.website      && <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank" rel="noopener noreferrer" className="block text-xs text-sky-500">{client.website}</a>}
@@ -182,6 +188,7 @@ function ContactSection({ client, onSave }: {
       <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide mb-3">Contacto</p>
       <div className="space-y-2">
         <Input value={name}  onChange={e => setName(e.target.value)}  placeholder="Nombre del contacto" />
+        <Input value={role}  onChange={e => setRole(e.target.value)}  placeholder="Rol / función" />
         <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" />
         <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Celular / WhatsApp" />
         <Input value={web}   onChange={e => setWeb(e.target.value)}   placeholder="Página web" />
@@ -243,10 +250,9 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
   const clientBacklog = ideas.filter(i => i.clientId === client.id && i.itemType === 'backlog')
 
   const nextAction = interactions
-    .filter(i => i.nextActionDate && i.status === 'abierto')
+    .filter(i => i.nextActionDate)
     .sort((a, b) => (a.nextActionDate! > b.nextActionDate! ? 1 : -1))[0]
 
-  const openCount = interactions.filter(i => i.status === 'abierto').length
   const filteredInteractions = interactions.filter(i => filterType === 'todas' || i.type === filterType)
 
   // Handlers - status & notes
@@ -315,11 +321,6 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
         : await addInteraction({ ...interactionForm, clientId: client.id })
       setInteractionModal(false)
     } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
-  }
-
-  async function toggleInteractionStatus(i: ClientInteraction) {
-    const next: InteractionStatus = i.status === 'abierto' ? 'cerrado' : 'abierto'
-    try { await editInteraction(i.id, { status: next }) } catch {}
   }
 
   async function handleDeleteInteraction(id: string) {
@@ -458,11 +459,6 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
                 {nextAction.nextSteps && <p className="text-xs text-amber-500 mt-0.5">{nextAction.nextSteps}</p>}
               </div>
             </div>
-          )}
-          {openCount > 0 && (
-            <p className="text-[10px] text-stone-400 mt-2">
-              {openCount} interacción{openCount > 1 ? 'es' : ''} abierta{openCount > 1 ? 's' : ''}
-            </p>
           )}
         </div>
 
@@ -645,7 +641,7 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
           )}
 
           {filteredInteractions.map(i => (
-            <div key={i.id} className={`px-4 py-3 border-t border-stone-50 ${i.status === 'cerrado' ? 'opacity-60' : ''}`}>
+            <div key={i.id} className="px-4 py-3 border-t border-stone-50">
               <div className="flex items-start gap-3">
                 <span className="text-xl leading-none mt-0.5">{TYPE_ICONS[i.type]}</span>
                 <div className="flex-1 min-w-0">
@@ -653,13 +649,10 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
                     <span className="text-xs font-semibold text-stone-700">{INTERACTION_TYPE_LABELS[i.type]}</span>
                     <span className="text-[10px] text-stone-400">{i.date}</span>
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${PRIORITY_COLORS[i.priority]}`}>{i.priority}</span>
-                    <button onClick={() => toggleInteractionStatus(i)} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${i.status === 'abierto' ? 'bg-amber-50 text-amber-600' : 'bg-stone-100 text-stone-400'}`}>
-                      {i.status}
-                    </button>
                   </div>
                   {i.summary && <p className="text-xs text-stone-600 mt-1">{i.summary}</p>}
                   {i.nextSteps && <p className="text-xs text-stone-400 mt-1">→ {i.nextSteps}</p>}
-                  {i.nextActionDate && i.status === 'abierto' && <p className="text-[10px] text-amber-500 mt-1">📅 Acción: {i.nextActionDate}</p>}
+                  {i.nextActionDate && <p className="text-[10px] text-amber-500 mt-1">📅 Acción: {i.nextActionDate}</p>}
                   {i.notes && <p className="text-[10px] text-stone-400 mt-1 italic">{i.notes}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -691,21 +684,11 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
         <Textarea value={interactionForm.summary ?? ''} onChange={e => setInteractionForm(f => ({ ...f, summary: e.target.value }))} placeholder="¿Qué se trató?" rows={3} />
         <Label>Próximos pasos</Label>
         <Textarea value={interactionForm.nextSteps ?? ''} onChange={e => setInteractionForm(f => ({ ...f, nextSteps: e.target.value }))} placeholder="¿Qué queda pendiente?" rows={2} />
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Prioridad</Label>
-            <Select value={interactionForm.priority} onChange={e => setInteractionForm(f => ({ ...f, priority: e.target.value as any }))}>
-              <option value="baja">Baja</option><option value="normal">Normal</option>
-              <option value="alta">Alta</option><option value="critica">Crítica</option>
-            </Select>
-          </div>
-          <div>
-            <Label>Estado</Label>
-            <Select value={interactionForm.status} onChange={e => setInteractionForm(f => ({ ...f, status: e.target.value as InteractionStatus }))}>
-              <option value="abierto">Abierto</option><option value="cerrado">Cerrado</option>
-            </Select>
-          </div>
-        </div>
+        <Label>Prioridad</Label>
+        <Select value={interactionForm.priority} onChange={e => setInteractionForm(f => ({ ...f, priority: e.target.value as any }))}>
+          <option value="baja">Baja</option><option value="normal">Normal</option>
+          <option value="alta">Alta</option><option value="critica">Crítica</option>
+        </Select>
         <Label>Próxima acción (fecha)</Label>
         <Input type="date" value={interactionForm.nextActionDate ?? ''} onChange={e => setInteractionForm(f => ({ ...f, nextActionDate: e.target.value }))} />
         <Label>Notas internas</Label>
