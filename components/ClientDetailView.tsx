@@ -258,8 +258,19 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
 
   // Handlers - status & notes
   async function handleStatusChange(newStatus: ClientStatus) {
-    try { await updateClient({ ...client, status: newStatus }); await onDataChange() }
-    catch (err) { alert(`Error: ${(err as Error)?.message}`) }
+    try {
+      await updateClient({ ...client, status: newStatus })
+      // Auditoría interna es anual: al cerrar o perder, programar seguimiento a 10 meses
+      const isTerminal = ['activo', 'confirmado', 'perdido'].includes(newStatus)
+      if (isTerminal && client.serviceCategory === 'auditoria_interna' && !client.nextActionDate) {
+        const d = new Date()
+        d.setMonth(d.getMonth() + 10)
+        const followUp = d.toISOString().split('T')[0]
+        await updateClient({ ...client, status: newStatus, nextActionDate: followUp })
+        await syncRevisitarTask(client.name, followUp)
+      }
+      await onDataChange()
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }
 
   async function handleSourceChange(newSource: ClientSourceType | '') {
