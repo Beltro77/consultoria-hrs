@@ -14,10 +14,11 @@ import IdeasView from '@/components/IdeasView'
 import ProjectsView from '@/components/iso/ProjectsView'
 import ProjectDetailView from '@/components/iso/ProjectDetailView'
 import ClientPortal from '@/components/iso/ClientPortal'
+import MemberPortal from '@/components/iso/MemberPortal'
 import { Btn, Input, Label } from '@/components/ui'
 
 type Tab = 'calendario' | 'dashboard' | 'historial' | 'clientes' | 'ideas' | 'proyectos'
-type UserRole = 'consultant' | 'client'
+type UserRole = 'consultant' | 'client' | 'member'
 
 const CONSULTANT_NAV: { id: Tab; label: string; icon: string }[] = [
   { id: 'calendario', label: 'Calendario', icon: '📅' },
@@ -184,6 +185,10 @@ function RoleRouter({ session }: { session: Session }) {
 
   if (role === 'client') {
     return <ClientPortal onSignOut={() => supabase.auth.signOut()} />
+  }
+
+  if (role === 'member') {
+    return <MemberPortal onSignOut={() => supabase.auth.signOut()} />
   }
 
   return <ConsultantApp />

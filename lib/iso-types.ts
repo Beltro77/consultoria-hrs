@@ -1,5 +1,5 @@
 export type ProjectStatus = 'active' | 'paused' | 'completed'
-export type UserRole = 'consultant' | 'client'
+export type UserRole = 'consultant' | 'client' | 'member'
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   active: 'Activo',
@@ -59,6 +59,49 @@ export interface ClientProfile {
   userId: string
   email?: string
   role: UserRole
+}
+
+// ─── Project members ────────────────────────────────────────
+
+export interface ProjectMember {
+  id: string
+  projectId: string
+  processName: string
+  memberName: string
+  memberEmail: string
+  memberPosition?: string
+  userId?: string
+  createdAt: string
+}
+
+export type MemberLogCategory = 'indicadores' | 'riesgos' | 'no_conformidades' | 'competencias'
+
+export const MEMBER_LOG_CATEGORIES: MemberLogCategory[] = [
+  'indicadores', 'riesgos', 'no_conformidades', 'competencias',
+]
+
+export const MEMBER_LOG_CATEGORY_LABELS: Record<MemberLogCategory, string> = {
+  indicadores:      'Indicadores & Objetivos',
+  riesgos:          'Gestión de Riesgos',
+  no_conformidades: 'No Conformidades',
+  competencias:     'Competencias',
+}
+
+export const MEMBER_LOG_CATEGORY_ICONS: Record<MemberLogCategory, string> = {
+  indicadores:      '📊',
+  riesgos:          '⚠️',
+  no_conformidades: '🔴',
+  competencias:     '👥',
+}
+
+export interface MemberLogEntry {
+  id: string
+  projectMemberId: string
+  category: MemberLogCategory
+  title: string
+  description?: string
+  entryDate: string
+  createdAt: string
 }
 
 // ─── Progress helpers ────────────────────────────────────────

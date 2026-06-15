@@ -17,6 +17,7 @@ import {
 import type { Client } from '@/lib/types'
 import { Btn, Label, Select } from '@/components/ui'
 import MeetingModal from '@/components/iso/MeetingModal'
+import MembersSection from '@/components/iso/MembersSection'
 
 interface Props {
   projectId: string
@@ -423,6 +424,9 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
           </div>
         </div>
       )}
+
+      {/* Members / process owners */}
+      <MembersSection projectId={projectId} />
 
       {/* Topics checklist */}
       <div className="mx-4 bg-white border border-stone-200 rounded-xl overflow-hidden mb-4">

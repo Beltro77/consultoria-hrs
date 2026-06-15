@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type {
   Project, ProjectTopic, TopicSubtask, Meeting, ClientProfile, UserRole,
+  ProjectMember, MemberLogEntry, MemberLogCategory,
 } from '@/lib/iso-types'
 
 // ─── Mappers ─────────────────────────────────────────────────
@@ -276,5 +277,131 @@ export async function upsertMeeting(m: {
 
 export async function deleteMeeting(id: string): Promise<void> {
   const { error } = await supabase.from('meetings').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ─── Project members ─────────────────────────────────────────
+
+function mapMember(row: any): ProjectMember {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    processName: row.process_name,
+    memberName: row.member_name,
+    memberEmail: row.member_email,
+    memberPosition: row.member_position ?? undefined,
+    userId: row.user_id ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+function mapLogEntry(row: any): MemberLogEntry {
+  return {
+    id: row.id,
+    projectMemberId: row.project_member_id,
+    category: row.category as MemberLogCategory,
+    title: row.title,
+    description: row.description ?? undefined,
+    entryDate: row.entry_date,
+    createdAt: row.created_at,
+  }
+}
+
+export async function listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  const { data, error } = await supabase
+    .from('project_members')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+  if (error) { console.error(error); return [] }
+  return (data ?? []).map(mapMember)
+}
+
+export async function upsertProjectMember(m: {
+  id?: string
+  projectId: string
+  processName: string
+  memberName: string
+  memberEmail: string
+  memberPosition?: string
+}): Promise<void> {
+  const payload: Record<string, any> = {
+    project_id:      m.projectId,
+    process_name:    m.processName,
+    member_name:     m.memberName,
+    member_email:    m.memberEmail,
+    member_position: m.memberPosition || null,
+  }
+  if (m.id) {
+    const { error } = await supabase.from('project_members').update(payload).eq('id', m.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('project_members').insert(payload)
+    if (error) throw error
+  }
+}
+
+export async function deleteProjectMember(id: string): Promise<void> {
+  const { error } = await supabase.from('project_members').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ─── Member log entries ──────────────────────────────────────
+
+export async function listLogEntries(memberId: string): Promise<MemberLogEntry[]> {
+  const { data, error } = await supabase
+    .from('member_log_entries')
+    .select('*')
+    .eq('project_member_id', memberId)
+    .order('entry_date', { ascending: false })
+  if (error) { console.error(error); return [] }
+  return (data ?? []).map(mapLogEntry)
+}
+
+export async function upsertLogEntry(e: {
+  id?: string
+  projectMemberId: string
+  category: MemberLogCategory
+  title: string
+  description?: string
+  entryDate: string
+}): Promise<void> {
+  const payload: Record<string, any> = {
+    project_member_id: e.projectMemberId,
+    category:          e.category,
+    title:             e.title,
+    description:       e.description || null,
+    entry_date:        e.entryDate,
+  }
+  if (e.id) {
+    const { error } = await supabase.from('member_log_entries').update(payload).eq('id', e.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('member_log_entries').insert(payload)
+    if (error) throw error
+  }
+}
+
+export async function deleteLogEntry(id: string): Promise<void> {
+  const { error } = await supabase.from('member_log_entries').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ─── Member portal ───────────────────────────────────────────
+
+export async function getMyMemberRecord(): Promise<ProjectMember | null> {
+  // Auto-link by email on first access
+  await supabase.rpc('link_member_by_email')
+  const { data } = await supabase
+    .from('project_members')
+    .select('*')
+    .maybeSingle()
+  return data ? mapMember(data) : null
+}
+
+export async function sendMemberAccess(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: typeof window !== 'undefined' ? window.location.origin : '',
+  })
   if (error) throw error
 }
