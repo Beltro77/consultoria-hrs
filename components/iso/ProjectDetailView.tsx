@@ -50,7 +50,7 @@ function TopicRow({
   topic: ProjectTopic
   index: number
   total: number
-  onToggleSubtask: (id: string, val: boolean) => void
+  onToggleSubtask: (id: string, val: boolean, topic: ProjectTopic) => void
   onToggleApplicable: (id: string, val: boolean) => void
   onMove: (id: string, dir: 'up' | 'down') => void
 }) {
@@ -120,24 +120,38 @@ function TopicRow({
 
       {expanded && topic.isApplicable && (
         <div className="px-4 pb-3 pl-10 space-y-2">
-          {topic.subtasks.map(s => (
-            <label key={s.id} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={s.isCompleted}
-                onChange={e => onToggleSubtask(s.id, e.target.checked)}
-                className="w-4 h-4 rounded accent-emerald-600"
-              />
-              <span className={`text-xs ${s.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'}`}>
-                {s.label}
-              </span>
-              {s.isCompleted && s.completedAt && (
-                <span className="text-[10px] text-stone-300 ml-auto">
-                  {new Date(s.completedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                </span>
-              )}
-            </label>
-          ))}
+          {[...topic.subtasks]
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map((s, idx, arr) => {
+              const canInteract = idx === 0 || arr[idx - 1].isCompleted
+              const isLast = idx === arr.length - 1 && s.isCompleted
+              return (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-2 ${canInteract ? 'cursor-pointer' : 'cursor-not-allowed opacity-35'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={s.isCompleted}
+                    disabled={!canInteract}
+                    onChange={e => canInteract && onToggleSubtask(s.id, e.target.checked, topic)}
+                    className="w-4 h-4 rounded accent-emerald-600 disabled:opacity-50"
+                  />
+                  <span className={`text-xs ${
+                    isLast ? 'text-emerald-600 font-medium' :
+                    s.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'
+                  }`}>
+                    {s.label}
+                    {isLast && ' ✓'}
+                  </span>
+                  {s.isCompleted && s.completedAt && (
+                    <span className="text-[10px] text-stone-300 ml-auto">
+                      {new Date(s.completedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                    </span>
+                  )}
+                </label>
+              )
+            })}
         </div>
       )}
     </div>
@@ -176,15 +190,33 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
 
   useEffect(() => { load() }, [load])
 
-  async function handleToggleSubtask(subtaskId: string, val: boolean) {
-    await toggleSubtask(subtaskId, val)
-    setTopics(prev => prev.map(t => ({
-      ...t,
-      subtasks: t.subtasks.map(s => s.id === subtaskId
-        ? { ...s, isCompleted: val, completedAt: val ? new Date().toISOString() : undefined }
-        : s
-      ),
-    })))
+  async function handleToggleSubtask(subtaskId: string, val: boolean, topic: ProjectTopic) {
+    const sorted = [...topic.subtasks].sort((a, b) => a.orderIndex - b.orderIndex)
+
+    if (val) {
+      // Check solo este subtask
+      await toggleSubtask(subtaskId, true)
+      setTopics(prev => prev.map(t => t.id !== topic.id ? t : {
+        ...t,
+        subtasks: t.subtasks.map(s => s.id === subtaskId
+          ? { ...s, isCompleted: true, completedAt: new Date().toISOString() }
+          : s
+        ),
+      }))
+    } else {
+      // Desmarcar este y todos los siguientes en cascada
+      const idx = sorted.findIndex(s => s.id === subtaskId)
+      const toUncheck = sorted.slice(idx).filter(s => s.isCompleted)
+      await Promise.all(toUncheck.map(s => toggleSubtask(s.id, false)))
+      const uncheckIds = new Set(toUncheck.map(s => s.id))
+      setTopics(prev => prev.map(t => t.id !== topic.id ? t : {
+        ...t,
+        subtasks: t.subtasks.map(s => uncheckIds.has(s.id)
+          ? { ...s, isCompleted: false, completedAt: undefined }
+          : s
+        ),
+      }))
+    }
   }
 
   async function handleToggleApplicable(topicId: string, val: boolean) {
