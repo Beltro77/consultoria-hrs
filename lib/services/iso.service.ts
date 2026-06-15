@@ -1,0 +1,275 @@
+import { supabase } from '@/lib/supabase'
+import type {
+  Project, ProjectTopic, TopicSubtask, Meeting, ClientProfile, UserRole,
+} from '@/lib/iso-types'
+
+// ─── Mappers ─────────────────────────────────────────────────
+
+function mapProject(row: any): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    clientUserId: row.client_user_id ?? undefined,
+    clientEmail: row.client_email ?? undefined,
+    status: row.status,
+    startDate: row.start_date ?? undefined,
+    estimatedEndDate: row.estimated_end_date ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+function mapSubtask(row: any): TopicSubtask {
+  return {
+    id: row.id,
+    projectTopicId: row.project_topic_id,
+    label: row.label,
+    isCompleted: row.is_completed,
+    completedAt: row.completed_at ?? undefined,
+    orderIndex: row.order_index,
+  }
+}
+
+function mapTopic(row: any, subtasks: TopicSubtask[] = []): ProjectTopic {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    topicKey: row.topic_key,
+    displayName: row.display_name,
+    orderIndex: row.order_index,
+    isApplicable: row.is_applicable,
+    subtasks,
+  }
+}
+
+function mapMeeting(row: any): Meeting {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    scheduledAt: row.scheduled_at,
+    summary: row.summary ?? undefined,
+    nextSteps: row.next_steps ?? undefined,
+    topicsCovered: row.topics_covered ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+// ─── Auth / profile ──────────────────────────────────────────
+
+export async function ensureProfile(userId: string, email: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!existing) {
+    await supabase.from('profiles').insert({ user_id: userId, email, role: 'consultant' })
+  } else {
+    await supabase.from('profiles').update({ email }).eq('user_id', userId)
+  }
+}
+
+export async function getCurrentUserRole(): Promise<UserRole | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+  return (data?.role as UserRole) ?? null
+}
+
+export async function listClientProfiles(): Promise<ClientProfile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, user_id, email, role')
+    .eq('role', 'client')
+  if (error) return []
+  return (data ?? []).map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    email: r.email ?? undefined,
+    role: r.role as UserRole,
+  }))
+}
+
+export async function findClientByEmail(email: string): Promise<ClientProfile | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, user_id, email, role')
+    .eq('email', email.trim())
+    .eq('role', 'client')
+    .maybeSingle()
+  if (!data) return null
+  return { id: data.id, userId: data.user_id, email: data.email ?? undefined, role: 'client' }
+}
+
+// ─── Projects ────────────────────────────────────────────────
+
+export async function listProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) { console.error(error); return [] }
+  return (data ?? []).map(mapProject)
+}
+
+export async function getProject(id: string): Promise<Project | null> {
+  const { data } = await supabase.from('projects').select('*').eq('id', id).single()
+  return data ? mapProject(data) : null
+}
+
+export async function createProject(input: {
+  name: string
+  clientEmail?: string
+  clientUserId?: string
+  status: string
+  startDate?: string
+  estimatedEndDate?: string
+}): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      name: input.name,
+      client_email: input.clientEmail || null,
+      client_user_id: input.clientUserId || null,
+      status: input.status,
+      start_date: input.startDate || null,
+      estimated_end_date: input.estimatedEndDate || null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+
+  const { error: seedErr } = await supabase.rpc('seed_project_topics', { p_project_id: data.id })
+  if (seedErr) throw seedErr
+
+  return mapProject(data)
+}
+
+export async function updateProject(id: string, fields: Partial<{
+  name: string
+  clientEmail: string
+  clientUserId: string
+  status: string
+  startDate: string
+  estimatedEndDate: string
+}>): Promise<void> {
+  const p: Record<string, any> = {}
+  if (fields.name !== undefined)             p.name                = fields.name
+  if (fields.clientEmail !== undefined)      p.client_email        = fields.clientEmail || null
+  if (fields.clientUserId !== undefined)     p.client_user_id      = fields.clientUserId || null
+  if (fields.status !== undefined)           p.status              = fields.status
+  if (fields.startDate !== undefined)        p.start_date          = fields.startDate || null
+  if (fields.estimatedEndDate !== undefined) p.estimated_end_date  = fields.estimatedEndDate || null
+  const { error } = await supabase.from('projects').update(p).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase.from('projects').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ─── Topics & Subtasks ───────────────────────────────────────
+
+export async function getTopicsWithSubtasks(projectId: string): Promise<ProjectTopic[]> {
+  const { data: topicRows, error: tErr } = await supabase
+    .from('project_topics')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('order_index', { ascending: true })
+  if (tErr || !topicRows?.length) return []
+
+  const { data: subtaskRows, error: sErr } = await supabase
+    .from('topic_subtasks')
+    .select('*')
+    .in('project_topic_id', topicRows.map(t => t.id))
+    .order('order_index', { ascending: true })
+  if (sErr) return []
+
+  const byTopic = new Map<string, TopicSubtask[]>()
+  for (const s of subtaskRows ?? []) {
+    const arr = byTopic.get(s.project_topic_id) ?? []
+    arr.push(mapSubtask(s))
+    byTopic.set(s.project_topic_id, arr)
+  }
+
+  return topicRows.map(t => mapTopic(t, byTopic.get(t.id) ?? []))
+}
+
+export async function toggleSubtask(subtaskId: string, isCompleted: boolean): Promise<void> {
+  const { error } = await supabase.from('topic_subtasks').update({
+    is_completed: isCompleted,
+    completed_at: isCompleted ? new Date().toISOString() : null,
+  }).eq('id', subtaskId)
+  if (error) throw error
+}
+
+export async function setTopicApplicable(topicId: string, isApplicable: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('project_topics')
+    .update({ is_applicable: isApplicable })
+    .eq('id', topicId)
+  if (error) throw error
+}
+
+export async function moveTopicOrder(
+  topicId: string,
+  direction: 'up' | 'down',
+  topics: ProjectTopic[],
+): Promise<void> {
+  const idx = topics.findIndex(t => t.id === topicId)
+  if (idx === -1) return
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= topics.length) return
+  const a = topics[idx]
+  const b = topics[swapIdx]
+  await Promise.all([
+    supabase.from('project_topics').update({ order_index: b.orderIndex }).eq('id', a.id),
+    supabase.from('project_topics').update({ order_index: a.orderIndex }).eq('id', b.id),
+  ])
+}
+
+// ─── Meetings ────────────────────────────────────────────────
+
+export async function listMeetings(projectId: string): Promise<Meeting[]> {
+  const { data, error } = await supabase
+    .from('meetings')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('scheduled_at', { ascending: true })
+  if (error) { console.error(error); return [] }
+  return (data ?? []).map(mapMeeting)
+}
+
+export async function upsertMeeting(m: {
+  id?: string
+  projectId: string
+  scheduledAt: string
+  summary?: string
+  nextSteps?: string
+  topicsCovered?: string[]
+}): Promise<void> {
+  const payload: Record<string, any> = {
+    project_id: m.projectId,
+    scheduled_at: m.scheduledAt,
+    summary: m.summary || null,
+    next_steps: m.nextSteps || null,
+    topics_covered: m.topicsCovered?.length ? m.topicsCovered : null,
+  }
+  if (m.id) {
+    const { error } = await supabase.from('meetings').update(payload).eq('id', m.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('meetings').insert(payload)
+    if (error) throw error
+  }
+}
+
+export async function deleteMeeting(id: string): Promise<void> {
+  const { error } = await supabase.from('meetings').delete().eq('id', id)
+  if (error) throw error
+}
