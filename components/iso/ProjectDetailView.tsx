@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   getProject, getTopicsWithSubtasks, listMeetings,
   toggleSubtask, setTopicApplicable, moveTopicOrder,
-  updateProject, deleteMeeting,
+  updateProject, deleteProject, deleteMeeting,
 } from '@/lib/services/iso.service'
 import { getClient } from '@/lib/services/clients.service'
 import { supabase } from '@/lib/supabase'
@@ -219,6 +219,21 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
     setMeetings(prev => prev.filter(m => m.id !== id))
   }
 
+  async function handleQuickStatus(newStatus: 'active' | 'paused' | 'completed') {
+    if (!project) return
+    const label = newStatus === 'paused' ? 'suspender' : newStatus === 'completed' ? 'concluir' : 'reactivar'
+    if (!confirm(`¿Querés ${label} este proyecto?`)) return
+    await updateProject(project.id, { status: newStatus })
+    await load()
+  }
+
+  async function handleDeleteProject() {
+    if (!project) return
+    if (!confirm(`¿Eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`)) return
+    await deleteProject(project.id)
+    onBack()
+  }
+
   async function handleSendPasswordReset() {
     const email = client?.contactEmail ?? project?.clientEmail
     if (!email) { alert('No hay email de contacto para este cliente.'); return }
@@ -281,8 +296,8 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
           <div className="mt-3 bg-stone-50 rounded-xl p-3 space-y-2">
             <Select value={editStatus} onChange={e => setEditStatus(e.target.value)}>
               <option value="active">Activo</option>
-              <option value="paused">Pausado</option>
-              <option value="completed">Completado</option>
+              <option value="paused">Suspendido</option>
+              <option value="completed">Concluido</option>
             </Select>
             <div className="grid grid-cols-2 gap-2">
               <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)}
@@ -296,13 +311,35 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${PROJECT_STATUS_COLORS[project.status]}`}>
               {PROJECT_STATUS_LABELS[project.status]}
             </span>
             {project.startDate && (
               <p className="text-[10px] text-stone-400">{formatDate(project.startDate)} → {formatDate(project.estimatedEndDate)}</p>
             )}
+            {project.status === 'active' && (
+              <>
+                <button onClick={() => handleQuickStatus('paused')}
+                  className="text-[10px] text-amber-500 hover:text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Suspender
+                </button>
+                <button onClick={() => handleQuickStatus('completed')}
+                  className="text-[10px] text-emerald-600 hover:text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Concluir
+                </button>
+              </>
+            )}
+            {project.status !== 'active' && (
+              <button onClick={() => handleQuickStatus('active')}
+                className="text-[10px] text-stone-500 hover:text-stone-700 border border-stone-200 px-2 py-0.5 rounded-full">
+                Reactivar
+              </button>
+            )}
+            <button onClick={handleDeleteProject}
+              className="text-[10px] text-red-400 hover:text-red-600 ml-auto">
+              Eliminar
+            </button>
           </div>
         )}
 

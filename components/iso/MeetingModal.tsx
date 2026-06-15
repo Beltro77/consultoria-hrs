@@ -15,10 +15,28 @@ interface Props {
 }
 
 function toLocalDatetimeStr(iso: string): string {
-  // Convert ISO to YYYY-MM-DDTHH:MM for datetime-local input
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Genera el template de resumen con los temas activos (al menos "Intro" completado)
+function buildSummaryTemplate(topics: ProjectTopic[]): string {
+  const active = topics.filter(t => {
+    if (!t.isApplicable) return false
+    // Tiene al menos el primer subtask completado
+    const sorted = [...t.subtasks].sort((a, b) => a.orderIndex - b.orderIndex)
+    return sorted[0]?.isCompleted === true
+  })
+  if (!active.length) return ''
+  return active.map(t => {
+    const done = t.subtasks.filter(s => s.isCompleted).length
+    const last = [...t.subtasks]
+      .sort((a, b) => b.orderIndex - a.orderIndex)
+      .find(s => s.isCompleted)
+    const progress = `${done}/${t.subtasks.length} — ${last?.label ?? ''}`
+    return `${t.displayName} (${progress})\n`
+  }).join('\n')
 }
 
 export default function MeetingModal({ open, onClose, onSaved, projectId, topics, editing }: Props) {
@@ -37,7 +55,7 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         setCovered(new Set(editing.topicsCovered ?? []))
       } else {
         setScheduledAt('')
-        setSummary('')
+        setSummary(buildSummaryTemplate(topics))
         setNextSteps('')
         setCovered(new Set())
       }
@@ -80,12 +98,19 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
       <Label>Fecha y hora *</Label>
       <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
 
-      <Label>Resumen de la reunión</Label>
+      <Label>
+        Resumen de la reunión
+        {!editing && summary && (
+          <span className="ml-2 text-[10px] text-stone-400 font-normal normal-case tracking-normal">
+            (template generado con temas activos)
+          </span>
+        )}
+      </Label>
       <Textarea
         value={summary}
         onChange={e => setSummary(e.target.value)}
         placeholder="¿Qué se trabajó?"
-        rows={3}
+        rows={Math.max(5, summary.split('\n').length + 2)}
       />
 
       <Label>Próximos pasos</Label>
