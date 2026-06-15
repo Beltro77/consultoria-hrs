@@ -6,12 +6,15 @@ import {
   toggleSubtask, setTopicApplicable, moveTopicOrder,
   updateProject, deleteMeeting,
 } from '@/lib/services/iso.service'
+import { getClient } from '@/lib/services/clients.service'
+import { supabase } from '@/lib/supabase'
 import {
   type Project, type ProjectTopic, type Meeting,
   computeProjectProgress, computeTopicProgress, topicStatus,
   TOPIC_STATUS_CONFIG, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS,
   trafficLight, TRAFFIC_COLORS,
 } from '@/lib/iso-types'
+import type { Client } from '@/lib/types'
 import { Btn, Label, Select } from '@/components/ui'
 import MeetingModal from '@/components/iso/MeetingModal'
 
@@ -142,13 +145,15 @@ function TopicRow({
 }
 
 export default function ProjectDetailView({ projectId, onBack }: Props) {
-  const [project, setProject]   = useState<Project | null>(null)
-  const [topics, setTopics]     = useState<ProjectTopic[]>([])
-  const [meetings, setMeetings] = useState<Meeting[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [meetingModal, setMeetingModal] = useState(false)
+  const [project, setProject]     = useState<Project | null>(null)
+  const [client, setClient]       = useState<Client | null>(null)
+  const [topics, setTopics]       = useState<ProjectTopic[]>([])
+  const [meetings, setMeetings]   = useState<Meeting[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [meetingModal, setMeetingModal]     = useState(false)
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null)
-  const [editingHeader, setEditingHeader] = useState(false)
+  const [editingHeader, setEditingHeader]   = useState(false)
+  const [resetSent, setResetSent]           = useState(false)
   const [editStatus, setEditStatus] = useState<string>('active')
   const [editStart, setEditStart]   = useState('')
   const [editEnd, setEditEnd]       = useState('')
@@ -162,6 +167,10 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
     setProject(p)
     setTopics(t)
     setMeetings(m)
+    if (p?.clientId) {
+      const c = await getClient(p.clientId)
+      setClient(c)
+    }
     setLoading(false)
   }, [projectId])
 
@@ -210,6 +219,17 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
     setMeetings(prev => prev.filter(m => m.id !== id))
   }
 
+  async function handleSendPasswordReset() {
+    const email = client?.contactEmail ?? project?.clientEmail
+    if (!email) { alert('No hay email de contacto para este cliente.'); return }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    if (error) { alert(`Error: ${error.message}`); return }
+    setResetSent(true)
+    setTimeout(() => setResetSent(false), 5000)
+  }
+
   if (loading || !project) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -240,9 +260,9 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
               )}
               <h2 className="text-lg font-semibold text-stone-900 truncate">{project.name}</h2>
             </div>
-            {project.clientEmail && (
-              <p className="text-xs text-stone-400">{project.clientEmail}</p>
-            )}
+            <p className="text-xs text-stone-400">
+              {client?.name ?? project.clientEmail ?? 'Sin cliente asignado'}
+            </p>
           </div>
           <button
             onClick={() => {
@@ -292,6 +312,48 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
           <span className="text-sm font-semibold text-stone-700 flex-shrink-0">{progress}%</span>
         </div>
       </div>
+
+      {/* Panel de contacto del cliente */}
+      {client && (
+        <div className="mx-4 mb-4 bg-white border border-stone-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">Contacto</p>
+            <button
+              onClick={handleSendPasswordReset}
+              disabled={resetSent}
+              className={`text-[11px] font-medium transition-colors ${
+                resetSent
+                  ? 'text-emerald-500'
+                  : 'text-stone-400 hover:text-sky-600'
+              }`}
+            >
+              {resetSent ? '✓ Email enviado' : 'Reenviar acceso'}
+            </button>
+          </div>
+          <div className="space-y-1">
+            {client.contactName && (
+              <p className="text-xs text-stone-700 font-medium">
+                {client.contactName}
+                {client.contactPosition && <span className="text-stone-400 font-normal"> · {client.contactPosition}</span>}
+              </p>
+            )}
+            {client.contactEmail && (
+              <a href={`mailto:${client.contactEmail}`} className="block text-xs text-sky-500">{client.contactEmail}</a>
+            )}
+            {client.contactPhone && (
+              <a href={`tel:${client.contactPhone}`} className="block text-xs text-stone-500">{client.contactPhone}</a>
+            )}
+            {client.website && (
+              <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`}
+                target="_blank" rel="noopener noreferrer"
+                className="block text-xs text-sky-500">{client.website}</a>
+            )}
+            {!client.contactEmail && (
+              <p className="text-[11px] text-amber-500">⚠️ Sin email — el cliente no podrá acceder al portal hasta agregar uno en su legajo.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Topics checklist */}
       <div className="mx-4 bg-white border border-stone-200 rounded-xl overflow-hidden mb-4">

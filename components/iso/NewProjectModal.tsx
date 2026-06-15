@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { BottomSheet, Btn, Input, Label, Select } from '@/components/ui'
 import { createProject, findClientByEmail } from '@/lib/services/iso.service'
+import { listClients } from '@/lib/services/clients.service'
+import type { Client } from '@/lib/types'
 import type { ProjectStatus } from '@/lib/iso-types'
 
 interface Props {
@@ -11,38 +13,51 @@ interface Props {
   onSaved: () => void
 }
 
+const ACTIVE_STATUSES = new Set(['activo', 'confirmado', 'pausado', 'inactivo'])
+
 export default function NewProjectModal({ open, onClose, onSaved }: Props) {
-  const [name, setName]           = useState('')
-  const [clientEmail, setEmail]   = useState('')
-  const [status, setStatus]       = useState<ProjectStatus>('active')
-  const [startDate, setStart]     = useState('')
-  const [endDate, setEnd]         = useState('')
-  const [saving, setSaving]       = useState(false)
-  const [lookup, setLookup]       = useState<string>('')  // feedback on email lookup
+  const [clients, setClients]       = useState<Client[]>([])
+  const [selectedId, setSelectedId] = useState('')
+  const [name, setName]             = useState('')
+  const [status, setStatus]         = useState<ProjectStatus>('active')
+  const [startDate, setStart]       = useState('')
+  const [endDate, setEnd]           = useState('')
+  const [saving, setSaving]         = useState(false)
+
+  useEffect(() => {
+    listClients().then(all => setClients(all.filter(c => ACTIVE_STATUSES.has(c.status ?? ''))))
+  }, [])
 
   useEffect(() => {
     if (open) {
-      setName(''); setEmail(''); setStatus('active')
-      setStart(''); setEnd(''); setLookup('')
+      setSelectedId(''); setName(''); setStatus('active'); setStart(''); setEnd('')
     }
   }, [open])
 
+  const selected = useMemo(() => clients.find(c => c.id === selectedId) ?? null, [clients, selectedId])
+
+  function handleSelect(id: string) {
+    setSelectedId(id)
+    const client = clients.find(c => c.id === id)
+    if (client && !name) {
+      setName(`ISO 9001 — ${client.name}`)
+    }
+  }
+
   async function handleSave() {
+    if (!selectedId) { alert('Seleccioná un cliente'); return }
     if (!name.trim()) { alert('Ingresá el nombre del proyecto'); return }
     setSaving(true)
     try {
-      // Try to find client by email
       let clientUserId: string | undefined
-      if (clientEmail.trim()) {
-        const profile = await findClientByEmail(clientEmail.trim())
+      if (selected?.contactEmail) {
+        const profile = await findClientByEmail(selected.contactEmail)
         clientUserId = profile?.userId
-        if (clientEmail.trim() && !clientUserId) {
-          setLookup('⚠️ No se encontró un usuario cliente con ese email. El proyecto se crea sin vincular portal.')
-        }
       }
       await createProject({
         name: name.trim(),
-        clientEmail: clientEmail.trim() || undefined,
+        clientId: selectedId,
+        clientEmail: selected?.contactEmail || undefined,
         clientUserId,
         status,
         startDate: startDate || undefined,
@@ -59,20 +74,57 @@ export default function NewProjectModal({ open, onClose, onSaved }: Props) {
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Nuevo proyecto ISO 9001">
-      <Label>Nombre del proyecto *</Label>
-      <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Implementación ISO — Acme S.A." />
 
-      <Label>Email del cliente (para portal)</Label>
+      <Label>Cliente *</Label>
+      <Select value={selectedId} onChange={e => handleSelect(e.target.value)}>
+        <option value="">— Seleccioná un cliente —</option>
+        {clients.map(c => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </Select>
+
+      {/* Info del cliente seleccionado */}
+      {selected && (
+        <div className="bg-stone-50 rounded-xl px-3 py-2.5 mb-3 space-y-1">
+          {selected.contactName && (
+            <p className="text-xs text-stone-600">
+              <span className="text-stone-400">Contacto:</span>{' '}
+              {selected.contactName}
+              {selected.contactPosition && <span className="text-stone-400"> · {selected.contactPosition}</span>}
+            </p>
+          )}
+          {selected.contactEmail && (
+            <p className="text-xs text-stone-600">
+              <span className="text-stone-400">Email:</span>{' '}
+              {selected.contactEmail}
+            </p>
+          )}
+          {selected.contactPhone && (
+            <p className="text-xs text-stone-600">
+              <span className="text-stone-400">Teléfono:</span>{' '}
+              {selected.contactPhone}
+            </p>
+          )}
+          {selected.website && (
+            <p className="text-xs text-stone-600">
+              <span className="text-stone-400">Web:</span>{' '}
+              {selected.website}
+            </p>
+          )}
+          {!selected.contactEmail && (
+            <p className="text-[11px] text-amber-600">
+              ⚠️ Este cliente no tiene email. El portal no podrá vincularse hasta que lo agregues en su legajo.
+            </p>
+          )}
+        </div>
+      )}
+
+      <Label>Nombre del proyecto *</Label>
       <Input
-        type="email"
-        value={clientEmail}
-        onChange={e => { setEmail(e.target.value); setLookup('') }}
-        placeholder="cliente@empresa.com"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="Ej: ISO 9001 — Acme S.A."
       />
-      {lookup && <p className="text-[11px] text-amber-600 -mt-1 mb-2">{lookup}</p>}
-      <p className="text-[10px] text-stone-400 -mt-1 mb-3">
-        El usuario cliente debe crearse primero en Supabase con metadata <code>{"{"}"role": "client"{"}"}</code>
-      </p>
 
       <Label>Estado</Label>
       <Select value={status} onChange={e => setStatus(e.target.value as ProjectStatus)}>

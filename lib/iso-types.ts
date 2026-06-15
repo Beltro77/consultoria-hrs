@@ -16,6 +16,7 @@ export const PROJECT_STATUS_COLORS: Record<ProjectStatus, string> = {
 export interface Project {
   id: string
   name: string
+  clientId?: string
   clientUserId?: string
   clientEmail?: string
   status: ProjectStatus

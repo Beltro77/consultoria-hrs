@@ -9,6 +9,7 @@ function mapProject(row: any): Project {
   return {
     id: row.id,
     name: row.name,
+    clientId: row.client_id ?? undefined,
     clientUserId: row.client_user_id ?? undefined,
     clientEmail: row.client_email ?? undefined,
     status: row.status,
@@ -123,6 +124,7 @@ export async function getProject(id: string): Promise<Project | null> {
 
 export async function createProject(input: {
   name: string
+  clientId?: string
   clientEmail?: string
   clientUserId?: string
   status: string
@@ -133,6 +135,7 @@ export async function createProject(input: {
     .from('projects')
     .insert({
       name: input.name,
+      client_id: input.clientId || null,
       client_email: input.clientEmail || null,
       client_user_id: input.clientUserId || null,
       status: input.status,
@@ -151,6 +154,7 @@ export async function createProject(input: {
 
 export async function updateProject(id: string, fields: Partial<{
   name: string
+  clientId: string
   clientEmail: string
   clientUserId: string
   status: string
@@ -159,6 +163,7 @@ export async function updateProject(id: string, fields: Partial<{
 }>): Promise<void> {
   const p: Record<string, any> = {}
   if (fields.name !== undefined)             p.name                = fields.name
+  if (fields.clientId !== undefined)         p.client_id           = fields.clientId || null
   if (fields.clientEmail !== undefined)      p.client_email        = fields.clientEmail || null
   if (fields.clientUserId !== undefined)     p.client_user_id      = fields.clientUserId || null
   if (fields.status !== undefined)           p.status              = fields.status
