@@ -20,26 +20,6 @@ function toLocalDatetimeStr(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Temas en ejecución: Intro completado pero el último subtask aún no (no concluido)
-function buildSummaryTemplate(topics: ProjectTopic[]): string {
-  const active = topics.filter(t => {
-    if (!t.isApplicable || t.subtasks.length === 0) return false
-    const sorted = [...t.subtasks].sort((a, b) => a.orderIndex - b.orderIndex)
-    const firstDone = sorted[0]?.isCompleted === true
-    const lastDone  = sorted[sorted.length - 1]?.isCompleted === true
-    return firstDone && !lastDone
-  })
-  if (!active.length) return ''
-  return active.map(t => {
-    const done = t.subtasks.filter(s => s.isCompleted).length
-    const last = [...t.subtasks]
-      .sort((a, b) => b.orderIndex - a.orderIndex)
-      .find(s => s.isCompleted)
-    const progress = `${done}/${t.subtasks.length} — ${last?.label ?? ''}`
-    return `${t.displayName} (${progress})\n`
-  }).join('\n')
-}
-
 export default function MeetingModal({ open, onClose, onSaved, projectId, topics, editing }: Props) {
   const [scheduledAt, setScheduledAt] = useState('')
   const [summary, setSummary]         = useState('')
@@ -56,17 +36,27 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         setCovered(new Set(editing.topicsCovered ?? []))
       } else {
         setScheduledAt('')
-        setSummary(buildSummaryTemplate(topics))
+        setSummary('')
         setNextSteps('')
         setCovered(new Set())
       }
     }
   }, [open, editing])
 
-  function toggleCovered(key: string) {
+  function toggleCovered(key: string, displayName: string) {
     setCovered(prev => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+        // Agrega el nombre del tema al textarea para que el usuario escriba su comentario
+        setSummary(prev => {
+          const line = `${displayName}:\n`
+          if (prev.includes(displayName + ':')) return prev
+          return prev ? `${prev.trimEnd()}\n\n${line}` : line
+        })
+      }
       return next
     })
   }
@@ -99,18 +89,11 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
       <Label>Fecha y hora *</Label>
       <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
 
-      <Label>
-        Resumen de la reunión
-        {!editing && summary && (
-          <span className="ml-2 text-[10px] text-stone-400 font-normal normal-case tracking-normal">
-            (temas en ejecución, sin concluir)
-          </span>
-        )}
-      </Label>
+      <Label>Resumen de la reunión</Label>
       <Textarea
         value={summary}
         onChange={e => setSummary(e.target.value)}
-        placeholder="¿Qué se trabajó?"
+        placeholder="Seleccioná temas abajo para agregarlos aquí, o escribí directamente."
         rows={Math.max(5, summary.split('\n').length + 2)}
       />
 
@@ -129,7 +112,7 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
             {applicableTopics.map(t => (
               <button
                 key={t.topicKey}
-                onClick={() => toggleCovered(t.topicKey)}
+                onClick={() => toggleCovered(t.topicKey, t.displayName)}
                 className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                   covered.has(t.topicKey)
                     ? 'bg-emerald-600 text-white border-emerald-600'
