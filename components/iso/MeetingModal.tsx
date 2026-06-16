@@ -20,13 +20,14 @@ function toLocalDatetimeStr(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Genera el template de resumen con los temas activos (al menos "Intro" completado)
+// Temas en ejecución: Intro completado pero el último subtask aún no (no concluido)
 function buildSummaryTemplate(topics: ProjectTopic[]): string {
   const active = topics.filter(t => {
-    if (!t.isApplicable) return false
-    // Tiene al menos el primer subtask completado
+    if (!t.isApplicable || t.subtasks.length === 0) return false
     const sorted = [...t.subtasks].sort((a, b) => a.orderIndex - b.orderIndex)
-    return sorted[0]?.isCompleted === true
+    const firstDone = sorted[0]?.isCompleted === true
+    const lastDone  = sorted[sorted.length - 1]?.isCompleted === true
+    return firstDone && !lastDone
   })
   if (!active.length) return ''
   return active.map(t => {
@@ -102,7 +103,7 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         Resumen de la reunión
         {!editing && summary && (
           <span className="ml-2 text-[10px] text-stone-400 font-normal normal-case tracking-normal">
-            (template generado con temas activos)
+            (temas en ejecución, sin concluir)
           </span>
         )}
       </Label>
