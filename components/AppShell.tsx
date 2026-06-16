@@ -154,11 +154,37 @@ function ConsultantApp() {
   )
 }
 
+// ─── Inactivity timeout ───────────────────────────────────────
+
+const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutos
+
+function useInactivityLogout() {
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+
+    function reset() {
+      clearTimeout(timer)
+      timer = setTimeout(() => supabase.auth.signOut(), INACTIVITY_MS)
+    }
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'] as const
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    reset()
+
+    return () => {
+      clearTimeout(timer)
+      events.forEach(e => window.removeEventListener(e, reset))
+    }
+  }, [])
+}
+
 // ─── Role router ─────────────────────────────────────────────
 
 function RoleRouter({ session }: { session: Session }) {
   const [role, setRole]     = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+
+  useInactivityLogout()
 
   useEffect(() => {
     async function detect() {
