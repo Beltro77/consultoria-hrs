@@ -163,7 +163,8 @@ function RoleRouter({ session }: { session: Session }) {
   useEffect(() => {
     async function detect() {
       try {
-        await ensureProfile(session.user.id, session.user.email ?? '')
+        const metaRole = session.user.user_metadata?.role as string | undefined
+        await ensureProfile(session.user.id, session.user.email ?? '', metaRole)
         const r = await getCurrentUserRole()
         setRole(r ?? 'consultant')
       } catch {

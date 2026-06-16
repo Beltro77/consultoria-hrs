@@ -89,9 +89,7 @@ export default function MemberModal({ open, onClose, onSaved, projectId, editing
       </div>
 
       <p className="text-[10px] text-stone-400 mt-1 mb-3">
-        El email será el acceso al portal. El usuario debe existir en Supabase Auth con{' '}
-        <code className="bg-stone-100 px-1 rounded">{"{"}"role": "member"{"}"}</code> en metadata,
-        o usar el botón "Enviar acceso" para invitarlo.
+        El email será el acceso al portal. Después de guardarlo, usá "Enviar acceso" para invitar al responsable por email (crea su cuenta automáticamente si no existe).
       </p>
 
       <Btn onClick={handleSave}>{saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar responsable'}</Btn>

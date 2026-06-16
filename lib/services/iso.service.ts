@@ -57,7 +57,7 @@ function mapMeeting(row: any): Meeting {
 
 // ─── Auth / profile ──────────────────────────────────────────
 
-export async function ensureProfile(userId: string, email: string): Promise<void> {
+export async function ensureProfile(userId: string, email: string, metaRole?: string): Promise<void> {
   const { data: existing } = await supabase
     .from('profiles')
     .select('id')
@@ -65,7 +65,8 @@ export async function ensureProfile(userId: string, email: string): Promise<void
     .maybeSingle()
 
   if (!existing) {
-    await supabase.from('profiles').insert({ user_id: userId, email, role: 'consultant' })
+    const role = (metaRole === 'member' || metaRole === 'client') ? metaRole : 'consultant'
+    await supabase.from('profiles').insert({ user_id: userId, email, role })
   } else {
     await supabase.from('profiles').update({ email }).eq('user_id', userId)
   }
@@ -400,8 +401,13 @@ export async function getMyMemberRecord(): Promise<ProjectMember | null> {
 }
 
 export async function sendMemberAccess(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: typeof window !== 'undefined' ? window.location.origin : '',
+  const res = await fetch('/api/invite-member', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
   })
-  if (error) throw error
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? `Error ${res.status}`)
+  }
 }
