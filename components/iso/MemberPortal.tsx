@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getMyMemberRecord, listLogEntries, upsertLogEntry, deleteLogEntry } from '@/lib/services/iso.service'
-import { getProject } from '@/lib/services/iso.service'
 import {
-  type ProjectMember, type MemberLogEntry, type MemberLogCategory,
+  getMyMemberRecord, listLogEntries, upsertLogEntry, deleteLogEntry,
+  getProject, getCategoryLevels, upsertCategoryLevel,
+} from '@/lib/services/iso.service'
+import {
+  type ProjectMember, type MemberLogEntry, type MemberLogCategory, type CategoryLevelMap,
   MEMBER_LOG_CATEGORIES, MEMBER_LOG_CATEGORY_LABELS, MEMBER_LOG_CATEGORY_ICONS,
+  CATEGORY_LEVEL_MAX, CATEGORY_LEVEL_LABELS, CATEGORY_LEVEL_COLORS,
 } from '@/lib/iso-types'
 
 interface Props {
@@ -20,20 +23,58 @@ function formatDate(iso: string) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// ── Selector de nivel ───────────────────────────────────────────
+
+function LevelSelector({ level, onChange }: { level: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-stone-50 border-b border-stone-100">
+      <div className="flex-1">
+        <p className="text-[10px] text-stone-400 mb-1.5">Nivel de avance</p>
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: CATEGORY_LEVEL_MAX + 1 }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => onChange(i)}
+              title={CATEGORY_LEVEL_LABELS[i]}
+              className="w-5 h-5 rounded-full transition-all border-2"
+              style={{
+                background: i <= level ? CATEGORY_LEVEL_COLORS[level] : 'transparent',
+                borderColor: i <= level ? CATEGORY_LEVEL_COLORS[level] : '#d6d3d1',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-xs font-semibold" style={{ color: CATEGORY_LEVEL_COLORS[level] }}>
+          {CATEGORY_LEVEL_LABELS[level]}
+        </p>
+        <p className="text-[10px] text-stone-400">Nivel {level}/{CATEGORY_LEVEL_MAX}</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Sección por categoría ───────────────────────────────────────
+
 function CategorySection({
   category,
   memberId,
+  level,
+  onLevelChange,
 }: {
   category: MemberLogCategory
   memberId: string
+  level: number
+  onLevelChange: (n: number) => void
 }) {
-  const [entries, setEntries]       = useState<MemberLogEntry[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [showForm, setShowForm]     = useState(false)
-  const [title, setTitle]           = useState('')
-  const [description, setDesc]      = useState('')
-  const [entryDate, setDate]        = useState(today())
-  const [saving, setSaving]         = useState(false)
+  const [entries, setEntries]   = useState<MemberLogEntry[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [title, setTitle]       = useState('')
+  const [description, setDesc]  = useState('')
+  const [entryDate, setDate]    = useState(today())
+  const [saving, setSaving]     = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -48,7 +89,12 @@ function CategorySection({
     if (!title.trim()) { alert('Ingresá un título'); return }
     setSaving(true)
     try {
-      await upsertLogEntry({ projectMemberId: memberId, category, title: title.trim(), description: description.trim() || undefined, entryDate })
+      await upsertLogEntry({
+        projectMemberId: memberId, category,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        entryDate,
+      })
       setTitle(''); setDesc(''); setDate(today()); setShowForm(false)
       await load()
     } catch (err) {
@@ -66,6 +112,7 @@ function CategorySection({
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-stone-50">
         <p className="text-sm font-semibold text-stone-700">
           {MEMBER_LOG_CATEGORY_ICONS[category]} {MEMBER_LOG_CATEGORY_LABELS[category]}
@@ -83,6 +130,10 @@ function CategorySection({
         </button>
       </div>
 
+      {/* Selector de nivel */}
+      <LevelSelector level={level} onChange={onLevelChange} />
+
+      {/* Formulario nuevo registro */}
       {showForm && (
         <div className="px-4 py-3 bg-stone-50 border-b border-stone-100 space-y-2">
           <input
@@ -139,11 +190,14 @@ function CategorySection({
   )
 }
 
+// ── Portal principal ────────────────────────────────────────────
+
 export default function MemberPortal({ onSignOut }: Props) {
-  const [member, setMember]   = useState<ProjectMember | null>(null)
-  const [projectName, setProjectName] = useState<string>('')
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
+  const [member, setMember]           = useState<ProjectMember | null>(null)
+  const [projectName, setProjectName] = useState('')
+  const [levels, setLevels]           = useState<CategoryLevelMap>({})
+  const [loading, setLoading]         = useState(true)
+  const [notFound, setNotFound]       = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -151,8 +205,12 @@ export default function MemberPortal({ onSignOut }: Props) {
         const m = await getMyMemberRecord()
         if (!m) { setNotFound(true); setLoading(false); return }
         setMember(m)
-        const p = await getProject(m.projectId)
+        const [p, lvls] = await Promise.all([
+          getProject(m.projectId),
+          getCategoryLevels(m.id),
+        ])
         setProjectName(p?.name ?? '')
+        setLevels(lvls)
       } catch (err) {
         console.error(err)
         setNotFound(true)
@@ -162,6 +220,16 @@ export default function MemberPortal({ onSignOut }: Props) {
     }
     init()
   }, [])
+
+  async function handleLevelChange(cat: MemberLogCategory, val: number) {
+    if (!member) return
+    setLevels(prev => ({ ...prev, [cat]: val }))
+    try {
+      await upsertCategoryLevel(member.id, cat, val)
+    } catch {
+      getCategoryLevels(member.id).then(setLevels)
+    }
+  }
 
   if (loading) {
     return (
@@ -205,7 +273,13 @@ export default function MemberPortal({ onSignOut }: Props) {
 
       <main className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
         {MEMBER_LOG_CATEGORIES.map(cat => (
-          <CategorySection key={cat} category={cat} memberId={member.id} />
+          <CategorySection
+            key={cat}
+            category={cat}
+            memberId={member.id}
+            level={levels[cat] ?? 0}
+            onLevelChange={val => handleLevelChange(cat, val)}
+          />
         ))}
       </main>
     </div>

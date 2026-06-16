@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase'
 import type {
   Project, ProjectTopic, TopicSubtask, Meeting, ClientProfile, UserRole,
   ProjectMember, MemberLogEntry, MemberLogCategory,
+  MemberCategoryLevel, CategoryLevelMap,
 } from '@/lib/iso-types'
+import { MEMBER_LOG_CATEGORIES } from '@/lib/iso-types'
 
 // ─── Mappers ─────────────────────────────────────────────────
 
@@ -415,4 +417,50 @@ export async function sendMemberAccess(email: string): Promise<void> {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error ?? `Error ${res.status}`)
   }
+}
+
+// ─── Category levels ─────────────────────────────────────────
+
+export async function getCategoryLevels(memberId: string): Promise<CategoryLevelMap> {
+  const { data } = await supabase
+    .from('member_category_levels')
+    .select('category, level')
+    .eq('project_member_id', memberId)
+  const map: CategoryLevelMap = {}
+  for (const row of data ?? []) {
+    map[row.category as MemberLogCategory] = row.level
+  }
+  return map
+}
+
+export async function upsertCategoryLevel(
+  memberId: string,
+  category: MemberLogCategory,
+  level: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from('member_category_levels')
+    .upsert(
+      { project_member_id: memberId, category, level, updated_at: new Date().toISOString() },
+      { onConflict: 'project_member_id,category' },
+    )
+  if (error) throw error
+}
+
+export async function getCategoryLevelsForProject(
+  projectId: string,
+): Promise<Record<string, CategoryLevelMap>> {
+  const members = await listProjectMembers(projectId)
+  if (!members.length) return {}
+  const { data } = await supabase
+    .from('member_category_levels')
+    .select('project_member_id, category, level')
+    .in('project_member_id', members.map(m => m.id))
+  const result: Record<string, CategoryLevelMap> = {}
+  for (const m of members) result[m.id] = {}
+  for (const row of data ?? []) {
+    result[row.project_member_id] ??= {}
+    result[row.project_member_id][row.category as MemberLogCategory] = row.level
+  }
+  return result
 }

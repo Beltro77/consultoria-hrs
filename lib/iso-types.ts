@@ -104,6 +104,36 @@ export interface MemberLogEntry {
   createdAt: string
 }
 
+// ─── Category level (0-4 per member × category) ─────────────
+
+export const CATEGORY_LEVEL_MAX = 4
+
+export const CATEGORY_LEVEL_LABELS = [
+  'Sin iniciar',
+  'En diagnóstico',
+  'En desarrollo',
+  'Implementado',
+  'Verificado',
+] as const
+
+export const CATEGORY_LEVEL_COLORS = [
+  '#d6d3d1', // 0 stone-300
+  '#fbbf24', // 1 amber-400
+  '#f59e0b', // 2 amber-500
+  '#10b981', // 3 emerald-500
+  '#059669', // 4 emerald-600
+] as const
+
+export interface MemberCategoryLevel {
+  id: string
+  projectMemberId: string
+  category: MemberLogCategory
+  level: number
+  updatedAt: string
+}
+
+export type CategoryLevelMap = Partial<Record<MemberLogCategory, number>>
+
 // ─── Progress helpers ────────────────────────────────────────
 
 export function computeTopicProgress(topic: ProjectTopic): number {
