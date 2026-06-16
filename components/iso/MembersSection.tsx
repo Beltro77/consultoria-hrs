@@ -9,71 +9,82 @@ import {
 import {
   type ProjectMember, type MemberLogEntry, type CategoryLevelMap,
   MEMBER_LOG_CATEGORIES, MEMBER_LOG_CATEGORY_LABELS, MEMBER_LOG_CATEGORY_ICONS,
-  CATEGORY_LEVEL_MAX, CATEGORY_LEVEL_LABELS, CATEGORY_LEVEL_COLORS,
+  CATEGORY_LEVEL_MAX, CATEGORY_LEVEL_NA, CATEGORY_LEVEL_LABELS, CATEGORY_LEVEL_COLORS,
 } from '@/lib/iso-types'
 import MemberModal from '@/components/iso/MemberModal'
 
-interface Props {
-  projectId: string
-}
+interface Props { projectId: string }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ── Dots de nivel ──────────────────────────────────────────────
+// ── Dots + N/A ──────────────────────────────────────────────────
 
-function LevelDots({
+function LevelControl({
   level,
   onChange,
-  readonly = false,
 }: {
   level: number
-  onChange?: (n: number) => void
-  readonly?: boolean
+  onChange: (n: number) => void
 }) {
+  const isNA = level === CATEGORY_LEVEL_NA
+
   return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: CATEGORY_LEVEL_MAX + 1 }).map((_, i) => (
-        <button
-          key={i}
-          disabled={readonly}
-          onClick={() => onChange?.(i === level ? 0 : i)}
-          title={CATEGORY_LEVEL_LABELS[i]}
-          className={`w-3 h-3 rounded-full transition-colors flex-shrink-0 ${readonly ? 'cursor-default' : 'cursor-pointer hover:opacity-70'}`}
-          style={{ background: i <= level ? CATEGORY_LEVEL_COLORS[level] : '#e7e5e4' }}
-        />
-      ))}
+    <div className="flex items-center gap-1.5">
+      {isNA ? (
+        <span className="text-[9px] italic text-stone-400">No aplica</span>
+      ) : (
+        <>
+          {Array.from({ length: CATEGORY_LEVEL_MAX + 1 }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => onChange(i)}
+              title={CATEGORY_LEVEL_LABELS[i]}
+              className="w-2.5 h-2.5 rounded-full transition-colors cursor-pointer hover:opacity-70 flex-shrink-0"
+              style={{ background: i <= level ? CATEGORY_LEVEL_COLORS[level] : '#e7e5e4' }}
+            />
+          ))}
+          {level > 0 && (
+            <span className="text-[9px] ml-0.5" style={{ color: CATEGORY_LEVEL_COLORS[level] }}>
+              {CATEGORY_LEVEL_LABELS[level]}
+            </span>
+          )}
+        </>
+      )}
+      <button
+        onClick={() => onChange(isNA ? 0 : CATEGORY_LEVEL_NA)}
+        className={`ml-1 text-[9px] px-1 py-0.5 rounded border transition-colors flex-shrink-0 ${
+          isNA
+            ? 'border-stone-400 bg-stone-200 text-stone-600'
+            : 'border-stone-200 text-stone-300 hover:text-stone-500'
+        }`}
+      >
+        N/A
+      </button>
     </div>
   )
 }
 
-// ── Grid compacto de niveles ────────────────────────────────────
+// ── Grid de 8 categorías ────────────────────────────────────────
 
 function LevelsGrid({
-  memberId,
   levels,
   onLevelChange,
 }: {
-  memberId: string
   levels: CategoryLevelMap
   onLevelChange: (cat: typeof MEMBER_LOG_CATEGORIES[number], val: number) => void
 }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 pt-2 border-t border-stone-50">
+    <div className="mt-2 pt-2 border-t border-stone-50 space-y-1.5">
       {MEMBER_LOG_CATEGORIES.map(cat => {
         const lvl = levels[cat] ?? 0
         return (
-          <div key={cat} className="flex flex-col gap-1">
-            <p className="text-[10px] text-stone-400">
+          <div key={cat} className="flex items-center gap-2">
+            <span className="text-[10px] text-stone-400 w-44 flex-shrink-0 truncate">
               {MEMBER_LOG_CATEGORY_ICONS[cat]} {MEMBER_LOG_CATEGORY_LABELS[cat]}
-            </p>
-            <div className="flex items-center gap-2">
-              <LevelDots level={lvl} onChange={val => onLevelChange(cat, val)} />
-              <span className="text-[9px]" style={{ color: CATEGORY_LEVEL_COLORS[lvl] }}>
-                {CATEGORY_LEVEL_LABELS[lvl]}
-              </span>
-            </div>
+            </span>
+            <LevelControl level={lvl} onChange={val => onLevelChange(cat, val)} />
           </div>
         )
       })}
@@ -92,11 +103,11 @@ function MemberRow({
   onEdit: (m: ProjectMember) => void
   onDeleted: () => void
 }) {
-  const [levels, setLevels]           = useState<CategoryLevelMap>({})
-  const [expanded, setExpanded]       = useState(false)
-  const [entries, setEntries]         = useState<MemberLogEntry[]>([])
-  const [loadingLog, setLoadingLog]   = useState(false)
-  const [accessSent, setAccessSent]   = useState(false)
+  const [levels, setLevels]         = useState<CategoryLevelMap>({})
+  const [expanded, setExpanded]     = useState(false)
+  const [entries, setEntries]       = useState<MemberLogEntry[]>([])
+  const [loadingLog, setLoadingLog] = useState(false)
+  const [accessSent, setAccessSent] = useState(false)
 
   useEffect(() => {
     getCategoryLevels(member.id).then(setLevels)
@@ -107,7 +118,6 @@ function MemberRow({
     try {
       await upsertCategoryLevel(member.id, cat, val)
     } catch {
-      // revert on error
       getCategoryLevels(member.id).then(setLevels)
     }
   }
@@ -127,9 +137,7 @@ function MemberRow({
       await sendMemberAccess(member.memberEmail)
       setAccessSent(true)
       setTimeout(() => setAccessSent(false), 5000)
-    } catch (err) {
-      alert(`Error: ${(err as Error)?.message}`)
-    }
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }
 
   async function handleDelete() {
@@ -146,7 +154,7 @@ function MemberRow({
   return (
     <div className="border-t border-stone-50 first:border-0">
       <div className="px-4 pt-3 pb-2">
-        {/* Header: nombre + acciones */}
+        {/* Header */}
         <div className="flex items-start gap-2">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-stone-800">{member.processName}</p>
@@ -174,11 +182,11 @@ function MemberRow({
           </div>
         </div>
 
-        {/* Niveles: siempre visibles */}
-        <LevelsGrid memberId={member.id} levels={levels} onLevelChange={handleLevelChange} />
+        {/* Niveles — siempre visibles */}
+        <LevelsGrid levels={levels} onLevelChange={handleLevelChange} />
       </div>
 
-      {/* Log de seguimiento (expandible) */}
+      {/* Log expandible */}
       {expanded && (
         <div className="px-4 pb-4 bg-stone-50">
           {loadingLog ? (

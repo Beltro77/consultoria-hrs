@@ -74,24 +74,41 @@ export interface ProjectMember {
   createdAt: string
 }
 
-export type MemberLogCategory = 'indicadores' | 'riesgos' | 'no_conformidades' | 'competencias'
+export type MemberLogCategory =
+  | 'indicadores'
+  | 'riesgos'
+  | 'no_conformidades'
+  | 'competencias'
+  | 'tematica'
+  | 'procedimientos'
+  | 'registros'
+  | 'evaluacion_proveedores'
 
 export const MEMBER_LOG_CATEGORIES: MemberLogCategory[] = [
   'indicadores', 'riesgos', 'no_conformidades', 'competencias',
+  'tematica', 'procedimientos', 'registros', 'evaluacion_proveedores',
 ]
 
 export const MEMBER_LOG_CATEGORY_LABELS: Record<MemberLogCategory, string> = {
-  indicadores:      'Indicadores & Objetivos',
-  riesgos:          'Gestión de Riesgos',
-  no_conformidades: 'No Conformidades',
-  competencias:     'Competencias',
+  indicadores:             'Indicadores & Objetivos',
+  riesgos:                 'Gestión de Riesgos',
+  no_conformidades:        'No Conformidades',
+  competencias:            'Competencias',
+  tematica:                'Temática',
+  procedimientos:          'Procedimientos',
+  registros:               'Registros',
+  evaluacion_proveedores:  'Evaluación de Proveedores',
 }
 
 export const MEMBER_LOG_CATEGORY_ICONS: Record<MemberLogCategory, string> = {
-  indicadores:      '📊',
-  riesgos:          '⚠️',
-  no_conformidades: '🔴',
-  competencias:     '👥',
+  indicadores:             '📊',
+  riesgos:                 '⚠️',
+  no_conformidades:        '🔴',
+  competencias:            '👥',
+  tematica:                '📋',
+  procedimientos:          '📝',
+  registros:               '🗂️',
+  evaluacion_proveedores:  '🏭',
 }
 
 export interface MemberLogEntry {
@@ -104,8 +121,9 @@ export interface MemberLogEntry {
   createdAt: string
 }
 
-// ─── Category level (0-4 per member × category) ─────────────
+// ─── Category level (-1 = N/A, 0-4 per member × category) ───
 
+export const CATEGORY_LEVEL_NA  = -1
 export const CATEGORY_LEVEL_MAX = 4
 
 export const CATEGORY_LEVEL_LABELS = [
