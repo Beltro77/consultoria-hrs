@@ -401,9 +401,14 @@ export async function getMyMemberRecord(): Promise<ProjectMember | null> {
 }
 
 export async function sendMemberAccess(email: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
   const res = await fetch('/api/invite-member', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ email }),
   })
   if (!res.ok) {
