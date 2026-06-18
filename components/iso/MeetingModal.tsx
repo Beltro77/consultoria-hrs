@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BottomSheet, Btn, Input, Label, Textarea } from '@/components/ui'
 import { upsertMeeting } from '@/lib/services/iso.service'
-import type { Meeting, ProjectTopic } from '@/lib/iso-types'
+import type { Meeting, ProjectTopic, ProjectMember } from '@/lib/iso-types'
 
 interface Props {
   open: boolean
@@ -11,6 +11,7 @@ interface Props {
   onSaved: () => void
   projectId: string
   topics: ProjectTopic[]
+  members?: ProjectMember[]
   editing?: Meeting | null
 }
 
@@ -20,7 +21,7 @@ function toLocalDatetimeStr(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function MeetingModal({ open, onClose, onSaved, projectId, topics, editing }: Props) {
+export default function MeetingModal({ open, onClose, onSaved, projectId, topics, members = [], editing }: Props) {
   const [scheduledAt, setScheduledAt] = useState('')
   const [summary, setSummary]         = useState('')
   const [nextSteps, setNextSteps]     = useState('')
@@ -105,10 +106,10 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         rows={2}
       />
 
-      {applicableTopics.length > 0 && (
+      {(applicableTopics.length > 0 || members.length > 0) && (
         <>
           <Label>Temas tratados</Label>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-1">
             {applicableTopics.map(t => (
               <button
                 key={t.topicKey}
@@ -123,6 +124,29 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
               </button>
             ))}
           </div>
+          {members.length > 0 && (
+            <>
+              <p className="text-[10px] text-stone-400 uppercase tracking-wide mt-3 mb-1.5">Procesos del cliente</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {members.map(m => {
+                  const key = `process:${m.id}`
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => toggleCovered(key, m.processName)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                        covered.has(key)
+                          ? 'bg-sky-600 text-white border-sky-600'
+                          : 'bg-white text-stone-500 border-stone-200'
+                      }`}
+                    >
+                      {m.processName}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
 

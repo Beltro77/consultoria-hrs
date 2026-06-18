@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   getProject, getTopicsWithSubtasks, listMeetings,
   toggleSubtask, setTopicApplicable, moveTopicOrder,
-  updateProject, deleteProject, deleteMeeting,
+  updateProject, deleteProject, deleteMeeting, listProjectMembers,
 } from '@/lib/services/iso.service'
 import { getClient } from '@/lib/services/clients.service'
 import { supabase } from '@/lib/supabase'
 import {
-  type Project, type ProjectTopic, type Meeting,
+  type Project, type ProjectTopic, type Meeting, type ProjectMember,
   computeProjectProgress, computeTopicProgress, topicStatus,
   TOPIC_STATUS_CONFIG, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS,
   trafficLight, TRAFFIC_COLORS,
@@ -164,6 +164,7 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
   const [client, setClient]       = useState<Client | null>(null)
   const [topics, setTopics]       = useState<ProjectTopic[]>([])
   const [meetings, setMeetings]   = useState<Meeting[]>([])
+  const [members, setMembers]     = useState<ProjectMember[]>([])
   const [loading, setLoading]     = useState(true)
   const [meetingModal, setMeetingModal]     = useState(false)
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null)
@@ -174,14 +175,16 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
   const [editEnd, setEditEnd]       = useState('')
 
   const load = useCallback(async () => {
-    const [p, t, m] = await Promise.all([
+    const [p, t, m, mbrs] = await Promise.all([
       getProject(projectId),
       getTopicsWithSubtasks(projectId),
       listMeetings(projectId),
+      listProjectMembers(projectId),
     ])
     setProject(p)
     setTopics(t)
     setMeetings(m)
+    setMembers(mbrs)
     if (p?.clientId) {
       const c = await getClient(p.clientId)
       setClient(c)
@@ -515,6 +518,7 @@ export default function ProjectDetailView({ projectId, onBack }: Props) {
         onSaved={load}
         projectId={projectId}
         topics={topics}
+        members={members}
         editing={editingMeeting}
       />
     </div>
