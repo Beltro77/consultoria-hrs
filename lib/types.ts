@@ -113,6 +113,7 @@ export interface ClientInteraction {
   date: string          // YYYY-MM-DD
   type: InteractionType
   summary?: string
+  clientResponse?: string
   nextSteps?: string
   status: InteractionStatus
   priority: Priority

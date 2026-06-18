@@ -81,6 +81,7 @@ const EMPTY_INTERACTION: Omit<ClientInteractionInput, 'clientId'> = {
   date: new Date().toISOString().split('T')[0],
   type: 'reunion',
   summary: '',
+  clientResponse: '',
   nextSteps: '',
   status: 'abierto', // kept for DB compatibility, not shown in UI
   priority: 'normal',
@@ -695,6 +696,8 @@ export default function ClientDetailView({ client, entries, onBack, onDataChange
         </div>
         <Label>Resumen</Label>
         <Textarea value={interactionForm.summary ?? ''} onChange={e => setInteractionForm(f => ({ ...f, summary: e.target.value }))} placeholder="¿Qué se trató?" rows={3} />
+        <Label>Respuesta del cliente</Label>
+        <Textarea value={interactionForm.clientResponse ?? ''} onChange={e => setInteractionForm(f => ({ ...f, clientResponse: e.target.value }))} placeholder="¿Cómo respondió el cliente?" rows={2} />
         <Label>Próximos pasos</Label>
         <Textarea value={interactionForm.nextSteps ?? ''} onChange={e => setInteractionForm(f => ({ ...f, nextSteps: e.target.value }))} placeholder="¿Qué queda pendiente?" rows={2} />
         <Label>Prioridad</Label>

@@ -10,6 +10,7 @@ function mapInteraction(row: any): ClientInteraction {
     date:           row.date,
     type:           row.type,
     summary:        row.summary ?? undefined,
+    clientResponse: row.client_response ?? undefined,
     nextSteps:      row.next_steps ?? undefined,
     status:         row.status ?? 'abierto',
     priority:       row.priority ?? 'normal',
@@ -43,6 +44,7 @@ export async function createInteraction(input: ClientInteractionInput): Promise<
     date:             input.date,
     type:             input.type,
     summary:          input.summary ?? null,
+    client_response:  input.clientResponse ?? null,
     next_steps:       input.nextSteps ?? null,
     status:           input.status ?? 'abierto',
     priority:         input.priority ?? 'normal',
@@ -70,8 +72,9 @@ export async function updateInteraction(id: string, input: Partial<ClientInterac
 
   if (input.date !== undefined)           payload.date             = input.date
   if (input.type !== undefined)           payload.type             = input.type
-  if (input.summary !== undefined)        payload.summary          = input.summary
-  if (input.nextSteps !== undefined)      payload.next_steps       = input.nextSteps
+  if (input.summary !== undefined)         payload.summary          = input.summary
+  if (input.clientResponse !== undefined)  payload.client_response  = input.clientResponse
+  if (input.nextSteps !== undefined)       payload.next_steps       = input.nextSteps
   if (input.status !== undefined)         payload.status           = input.status
   if (input.priority !== undefined)       payload.priority         = input.priority
   if (input.nextActionDate !== undefined) payload.next_action_date = input.nextActionDate || null

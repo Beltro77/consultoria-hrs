@@ -54,6 +54,7 @@ const EMPTY_INTERACTION: Omit<ClientInteractionInput, 'clientId'> = {
   date: new Date().toISOString().split('T')[0],
   type: 'email',
   summary: '',
+  clientResponse: '',
   nextSteps: '',
   status: 'abierto',
   priority: 'normal',
@@ -335,6 +336,14 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
           value={interactionForm.summary ?? ''}
           onChange={e => setInteractionForm(f => ({ ...f, summary: e.target.value }))}
           placeholder="¿Qué se trató?"
+          rows={2}
+        />
+
+        <Label>Respuesta del cliente</Label>
+        <Textarea
+          value={interactionForm.clientResponse ?? ''}
+          onChange={e => setInteractionForm(f => ({ ...f, clientResponse: e.target.value }))}
+          placeholder="¿Cómo respondió el cliente?"
           rows={2}
         />
 
