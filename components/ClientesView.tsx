@@ -10,6 +10,7 @@ import {
   INTERNAL_CLIENT_ROOT_NAME,
   clientColor,
   type Client,
+  type ClientInteraction,
   type ClientInteractionInput,
   type ClientStatus,
   type HourEntry,
@@ -65,10 +66,33 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
   const [showAdd, setShowAdd] = useState(false)
   const [interactionModal, setInteractionModal] = useState(false)
   const [interactionForm, setInteractionForm] = useState(EMPTY_INTERACTION)
+  const [editingInteraction, setEditingInteraction] = useState<ClientInteraction | null>(null)
   const [showSubtopics, setShowSubtopics] = useState(false)
 
   const { subtopics, addSubtopic, removeSubtopic } = useSubtopics(client.id)
-  const { interactions, loading: interLoading, addInteraction, removeInteraction } = useClientInteractions(client.id)
+  const { interactions, loading: interLoading, addInteraction, editInteraction, removeInteraction } = useClientInteractions(client.id)
+
+  function openNewInteraction() {
+    setEditingInteraction(null)
+    setInteractionForm(EMPTY_INTERACTION)
+    setInteractionModal(true)
+  }
+
+  function openEditInteraction(i: ClientInteraction) {
+    setEditingInteraction(i)
+    setInteractionForm({
+      date: i.date, type: i.type, summary: i.summary ?? '',
+      nextSteps: i.nextSteps ?? '', status: i.status, priority: i.priority,
+      nextActionDate: i.nextActionDate ?? '', notes: i.notes ?? '',
+    })
+    setInteractionModal(true)
+  }
+
+  function closeModal() {
+    setInteractionModal(false)
+    setEditingInteraction(null)
+    setInteractionForm(EMPTY_INTERACTION)
+  }
 
   const col = clientColor(client)
   const h = entries.filter(e => e.clientId === client.id).reduce((a, e) => a + e.hours, 0)
@@ -85,9 +109,12 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
       return
     }
     try {
-      await addInteraction({ ...interactionForm, clientId: client.id })
-      setInteractionModal(false)
-      setInteractionForm(EMPTY_INTERACTION)
+      if (editingInteraction) {
+        await editInteraction(editingInteraction.id, interactionForm)
+      } else {
+        await addInteraction({ ...interactionForm, clientId: client.id })
+      }
+      closeModal()
     } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
   }
 
@@ -184,7 +211,7 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
             )}
           </p>
           <button
-            onClick={() => setInteractionModal(true)}
+            onClick={openNewInteraction}
             className="text-[11px] text-emerald-600 font-medium hover:text-emerald-700"
           >
             + Registrar
@@ -209,7 +236,10 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
                 <p className="text-[10px] text-amber-500 mt-0.5">📅 {i.nextActionDate}</p>
               )}
             </div>
-            <button onClick={() => handleDeleteInteraction(i.id)} className="text-[11px] text-stone-300 hover:text-red-400 flex-shrink-0">✕</button>
+            <div className="flex flex-col gap-1 flex-shrink-0">
+              <button onClick={() => openEditInteraction(i)} className="text-[11px] text-stone-400 hover:text-stone-600">Editar</button>
+              <button onClick={() => handleDeleteInteraction(i.id)} className="text-[11px] text-stone-300 hover:text-red-400">✕</button>
+            </div>
           </div>
         ))}
 
@@ -276,8 +306,8 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
         )}
       </div>
 
-      {/* Modal nueva interacción */}
-      <BottomSheet open={interactionModal} onClose={() => setInteractionModal(false)} title="Nueva interacción">
+      {/* Modal interacción */}
+      <BottomSheet open={interactionModal} onClose={closeModal} title={editingInteraction ? 'Editar interacción' : 'Nueva interacción'}>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Tipo</Label>
@@ -341,7 +371,7 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
 
         <div className="flex flex-col gap-2 mt-4">
           <Btn onClick={handleSaveInteraction}>Guardar</Btn>
-          <Btn variant="ghost" onClick={() => setInteractionModal(false)}>Cancelar</Btn>
+          <Btn variant="ghost" onClick={closeModal}>Cancelar</Btn>
         </div>
       </BottomSheet>
     </div>
