@@ -378,11 +378,12 @@ function ExternalClientCard({ client, entries, onDelete, onDataChange, onOpenDet
   )
 }
 
-const ACTIVE_STATUSES  = new Set(['activo', 'confirmado', 'pausado', 'inactivo', undefined, null])
-const LOST_STATUSES    = new Set(['perdido'])
+const ACTIVE_STATUSES    = new Set(['activo', 'confirmado', 'pausado', undefined, null])
+const INACTIVE_STATUSES  = new Set(['inactivo'])
+const LOST_STATUSES      = new Set(['perdido'])
 const POTENTIAL_STATUSES = new Set(['lead', 'contacto_inicial', 'propuesta_enviada', 'negociacion'])
 
-type ClientTab = 'clientes' | 'potenciales' | 'perdidos'
+type ClientTab = 'clientes' | 'potenciales' | 'inactivos' | 'perdidos'
 
 export default function ClientesView({ clients, onDataChange, onDeleteClient }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
@@ -396,14 +397,14 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
   const { subtopics, addSubtopic, removeSubtopic } = useSubtopics(catalizar?.id ?? null)
   const allNormalClients = clients.filter(c => c.name !== INTERNAL_CLIENT_ROOT_NAME)
   const normalClients = allNormalClients.filter(c =>
-    clientTab === 'clientes'
-      ? ACTIVE_STATUSES.has(c.status as any)
-      : clientTab === 'potenciales'
-        ? POTENTIAL_STATUSES.has(c.status as any)
-        : LOST_STATUSES.has(c.status as any)
+    clientTab === 'clientes'    ? ACTIVE_STATUSES.has(c.status as any)
+    : clientTab === 'potenciales' ? POTENTIAL_STATUSES.has(c.status as any)
+    : clientTab === 'inactivos'   ? INACTIVE_STATUSES.has(c.status as any)
+    : LOST_STATUSES.has(c.status as any)
   )
   const activeCount    = allNormalClients.filter(c => ACTIVE_STATUSES.has(c.status as any)).length
   const potentialCount = allNormalClients.filter(c => POTENTIAL_STATUSES.has(c.status as any)).length
+  const inactivosCount = allNormalClients.filter(c => INACTIVE_STATUSES.has(c.status as any)).length
   const lostCount      = allNormalClients.filter(c => LOST_STATUSES.has(c.status as any)).length
 
   // Si hay un cliente seleccionado, mostrar su legajo
@@ -499,25 +500,24 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
         </div>
       )}
 
-      {/* Tabs clientes / potenciales / perdidos */}
+      {/* Tabs clientes / potenciales / inactivos / perdidos */}
       <div className="flex border border-stone-200 rounded-xl overflow-hidden mb-3 bg-white">
         {([
-          { id: 'clientes',    label: 'Clientes',    count: activeCount },
-          { id: 'potenciales', label: 'Potenciales', count: potentialCount },
-          { id: 'perdidos',    label: 'Perdidos',    count: lostCount },
-        ] as { id: ClientTab; label: string; count: number }[]).map(t => (
+          { id: 'clientes',    label: 'Clientes',    count: activeCount,    activeClass: 'bg-stone-800 text-white' },
+          { id: 'potenciales', label: 'Potenciales', count: potentialCount, activeClass: 'bg-stone-800 text-white' },
+          { id: 'inactivos',   label: 'Inactivos',   count: inactivosCount, activeClass: 'bg-stone-500 text-white' },
+          { id: 'perdidos',    label: 'Perdidos',    count: lostCount,      activeClass: 'bg-red-600 text-white' },
+        ] as { id: ClientTab; label: string; count: number; activeClass: string }[]).map(t => (
           <button
             key={t.id}
             onClick={() => setClientTab(t.id)}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
-              clientTab === t.id
-                ? t.id === 'perdidos' ? 'bg-red-600 text-white' : 'bg-stone-800 text-white'
-                : 'text-stone-400 hover:text-stone-600'
+            className={`flex-1 py-2.5 text-xs font-semibold transition-colors ${
+              clientTab === t.id ? t.activeClass : 'text-stone-400 hover:text-stone-600'
             }`}
           >
             {t.label}
             {t.count > 0 && (
-              <span className={`ml-1.5 text-[10px] rounded-full px-1.5 py-0.5 ${
+              <span className={`ml-1 text-[10px] rounded-full px-1 py-0.5 ${
                 clientTab === t.id ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'
               }`}>
                 {t.count}
@@ -532,7 +532,9 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
         {!normalClients.length ? (
           <div className="bg-white border border-stone-200 rounded-xl p-6 text-center">
             <p className="text-sm text-stone-400">
-              {clientTab === 'perdidos' ? 'Sin oportunidades perdidas' : 'Agregá tu primer cliente'}
+              {clientTab === 'perdidos'  ? 'Sin oportunidades perdidas'
+               : clientTab === 'inactivos' ? 'Sin clientes inactivos'
+               : 'Agregá tu primer cliente'}
             </p>
           </div>
         ) : (
@@ -557,7 +559,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
         )}
       </div>
 
-      {clientTab !== 'perdidos' && (
+      {(clientTab === 'clientes' || clientTab === 'potenciales') && (
         <Btn onClick={() => setModalOpen(true)}>+ Nuevo cliente</Btn>
       )}
 
