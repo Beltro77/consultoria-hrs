@@ -161,19 +161,41 @@ const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutos
 function useInactivityLogout() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
+    let lastActivity = Date.now()
 
     function reset() {
+      lastActivity = Date.now()
       clearTimeout(timer)
       timer = setTimeout(() => supabase.auth.signOut(), INACTIVITY_MS)
     }
 
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'] as const
+    // Al volver al tab/app, verificar si realmente pasaron 5 min de inactividad real.
+    // Evita logout falso cuando el dispositivo suspende el timer.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        if (Date.now() - lastActivity >= INACTIVITY_MS) {
+          supabase.auth.signOut()
+        } else {
+          reset()
+        }
+      }
+    }
+
+    const events = [
+      'mousemove', 'mousedown', 'mouseup',
+      'keydown', 'keypress', 'input',
+      'touchstart', 'touchmove', 'touchend',
+      'pointerdown', 'pointermove',
+      'scroll', 'wheel', 'click',
+    ] as const
     events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    document.addEventListener('visibilitychange', onVisibilityChange)
     reset()
 
     return () => {
       clearTimeout(timer)
       events.forEach(e => window.removeEventListener(e, reset))
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [])
 }
