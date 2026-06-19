@@ -22,11 +22,13 @@ function toLocalDatetimeStr(iso: string): string {
 }
 
 export default function MeetingModal({ open, onClose, onSaved, projectId, topics, members = [], editing }: Props) {
-  const [scheduledAt, setScheduledAt] = useState('')
-  const [summary, setSummary]         = useState('')
-  const [nextSteps, setNextSteps]     = useState('')
-  const [covered, setCovered]         = useState<Set<string>>(new Set())
-  const [saving, setSaving]           = useState(false)
+  const [scheduledAt, setScheduledAt]   = useState('')
+  const [summary, setSummary]           = useState('')
+  const [nextSteps, setNextSteps]       = useState('')
+  const [covered, setCovered]           = useState<Set<string>>(new Set())
+  const [participants, setParticipants] = useState<string[]>([])
+  const [newParticipant, setNewParticipant] = useState('')
+  const [saving, setSaving]             = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -35,12 +37,15 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         setSummary(editing.summary ?? '')
         setNextSteps(editing.nextSteps ?? '')
         setCovered(new Set(editing.topicsCovered ?? []))
+        setParticipants(editing.participants ?? members.map(m => m.memberName))
       } else {
         setScheduledAt('')
         setSummary('')
         setNextSteps('')
         setCovered(new Set())
+        setParticipants(members.map(m => m.memberName))
       }
+      setNewParticipant('')
     }
   }, [open, editing])
 
@@ -73,6 +78,7 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
         summary: summary.trim() || undefined,
         nextSteps: nextSteps.trim() || undefined,
         topicsCovered: covered.size ? Array.from(covered) : undefined,
+        participants: participants.length ? participants : undefined,
       })
       onSaved()
       onClose()
@@ -89,6 +95,42 @@ export default function MeetingModal({ open, onClose, onSaved, projectId, topics
     <BottomSheet open={open} onClose={onClose} title={editing ? 'Editar reunión' : 'Nueva reunión'}>
       <Label>Fecha y hora *</Label>
       <Input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+
+      <Label>Participantes</Label>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {participants.map((p, i) => (
+          <span key={i} className="flex items-center gap-1 bg-stone-100 text-stone-700 text-xs px-2.5 py-1 rounded-full">
+            {p}
+            <button
+              onClick={() => setParticipants(prev => prev.filter((_, j) => j !== i))}
+              className="text-stone-400 hover:text-red-400 ml-0.5 leading-none"
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newParticipant}
+          onChange={e => setNewParticipant(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && newParticipant.trim()) {
+              setParticipants(prev => [...prev, newParticipant.trim()])
+              setNewParticipant('')
+            }
+          }}
+          placeholder="Agregar participante..."
+          className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        />
+        <button
+          onClick={() => { if (newParticipant.trim()) { setParticipants(prev => [...prev, newParticipant.trim()]); setNewParticipant('') } }}
+          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 px-2"
+        >
+          + Agregar
+        </button>
+      </div>
 
       <Label>Resumen de la reunión</Label>
       <Textarea

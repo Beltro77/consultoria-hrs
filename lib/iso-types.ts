@@ -51,6 +51,7 @@ export interface Meeting {
   summary?: string
   nextSteps?: string
   topicsCovered?: string[]
+  participants?: string[]
   createdAt: string
 }
 

@@ -53,6 +53,7 @@ function mapMeeting(row: any): Meeting {
     summary: row.summary ?? undefined,
     nextSteps: row.next_steps ?? undefined,
     topicsCovered: row.topics_covered ?? undefined,
+    participants: row.participants ?? undefined,
     createdAt: row.created_at,
   }
 }
@@ -261,6 +262,7 @@ export async function upsertMeeting(m: {
   summary?: string
   nextSteps?: string
   topicsCovered?: string[]
+  participants?: string[]
 }): Promise<void> {
   const payload: Record<string, any> = {
     project_id: m.projectId,
@@ -268,6 +270,7 @@ export async function upsertMeeting(m: {
     summary: m.summary || null,
     next_steps: m.nextSteps || null,
     topics_covered: m.topicsCovered?.length ? m.topicsCovered : null,
+    participants: m.participants?.length ? m.participants : null,
   }
   if (m.id) {
     const { error } = await supabase.from('meetings').update(payload).eq('id', m.id)
