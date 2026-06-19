@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import type {
   Project, ProjectTopic, TopicSubtask, Meeting, ClientProfile, UserRole,
   ProjectMember, MemberLogEntry, MemberLogCategory,
-  MemberCategoryLevel, CategoryLevelMap,
+  MemberCategoryLevel, CategoryLevelMap, CoordinatorItem,
 } from '@/lib/iso-types'
 import { MEMBER_LOG_CATEGORIES } from '@/lib/iso-types'
 
@@ -292,6 +292,7 @@ function mapMember(row: any): ProjectMember {
   return {
     id: row.id,
     projectId: row.project_id,
+    memberRole: row.member_role ?? 'owner',
     processName: row.process_name,
     memberName: row.member_name,
     memberEmail: row.member_email,
@@ -326,6 +327,7 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
 export async function upsertProjectMember(m: {
   id?: string
   projectId: string
+  memberRole?: string
   processName: string
   memberName: string
   memberEmail: string
@@ -333,6 +335,7 @@ export async function upsertProjectMember(m: {
 }): Promise<void> {
   const payload: Record<string, any> = {
     project_id:      m.projectId,
+    member_role:     m.memberRole ?? 'owner',
     process_name:    m.processName,
     member_name:     m.memberName,
     member_email:    m.memberEmail,
@@ -345,6 +348,39 @@ export async function upsertProjectMember(m: {
     const { error } = await supabase.from('project_members').insert(payload)
     if (error) throw error
   }
+}
+
+// ─── Coordinator items ────────────────────────────────────────
+
+export async function listCoordinatorItems(projectMemberId: string): Promise<CoordinatorItem[]> {
+  const { data, error } = await supabase
+    .from('coordinator_items')
+    .select('*')
+    .eq('project_member_id', projectMemberId)
+    .order('created_at', { ascending: true })
+  if (error) { console.error(error); return [] }
+  return (data ?? []).map(row => ({
+    id: row.id,
+    projectMemberId: row.project_member_id,
+    text: row.text,
+    done: row.done,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function addCoordinatorItem(projectMemberId: string, text: string): Promise<void> {
+  const { error } = await supabase.from('coordinator_items').insert({ project_member_id: projectMemberId, text })
+  if (error) throw error
+}
+
+export async function toggleCoordinatorItem(id: string, done: boolean): Promise<void> {
+  const { error } = await supabase.from('coordinator_items').update({ done }).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteCoordinatorItem(id: string): Promise<void> {
+  const { error } = await supabase.from('coordinator_items').delete().eq('id', id)
+  if (error) throw error
 }
 
 export async function deleteProjectMember(id: string): Promise<void> {

@@ -64,14 +64,25 @@ export interface ClientProfile {
 
 // ─── Project members ────────────────────────────────────────
 
+export type MemberRole = 'owner' | 'coordinator'
+
 export interface ProjectMember {
   id: string
   projectId: string
+  memberRole: MemberRole
   processName: string
   memberName: string
   memberEmail: string
   memberPosition?: string
   userId?: string
+  createdAt: string
+}
+
+export interface CoordinatorItem {
+  id: string
+  projectMemberId: string
+  text: string
+  done: boolean
   createdAt: string
 }
 

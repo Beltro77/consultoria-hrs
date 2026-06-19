@@ -5,9 +5,10 @@ import {
   listProjectMembers, listLogEntries,
   deleteProjectMember, sendMemberAccess,
   getCategoryLevels, upsertCategoryLevel,
+  listCoordinatorItems, addCoordinatorItem, toggleCoordinatorItem, deleteCoordinatorItem,
 } from '@/lib/services/iso.service'
 import {
-  type ProjectMember, type MemberLogEntry, type CategoryLevelMap,
+  type ProjectMember, type MemberLogEntry, type CategoryLevelMap, type CoordinatorItem,
   MEMBER_LOG_CATEGORIES, MEMBER_LOG_CATEGORY_LABELS, MEMBER_LOG_CATEGORY_ICONS,
   CATEGORY_LEVEL_MAX, CATEGORY_LEVEL_NA, CATEGORY_LEVEL_LABELS, CATEGORY_LEVEL_COLORS,
 } from '@/lib/iso-types'
@@ -88,6 +89,148 @@ function LevelsGrid({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Coordinadora de proyecto ────────────────────────────────────
+
+function CoordinatorRow({
+  member,
+  onEdit,
+  onDeleted,
+}: {
+  member: ProjectMember
+  onEdit: (m: ProjectMember) => void
+  onDeleted: () => void
+}) {
+  const [items, setItems]       = useState<CoordinatorItem[]>([])
+  const [newText, setNewText]   = useState('')
+  const [loading, setLoading]   = useState(true)
+  const [saving, setSaving]     = useState(false)
+  const [accessSent, setAccessSent] = useState(false)
+
+  useEffect(() => {
+    listCoordinatorItems(member.id).then(data => { setItems(data); setLoading(false) })
+  }, [member.id])
+
+  async function handleAdd() {
+    if (!newText.trim()) return
+    setSaving(true)
+    try {
+      await addCoordinatorItem(member.id, newText.trim())
+      setNewText('')
+      setItems(await listCoordinatorItems(member.id))
+    } finally { setSaving(false) }
+  }
+
+  async function handleToggle(item: CoordinatorItem) {
+    await toggleCoordinatorItem(item.id, !item.done)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, done: !i.done } : i))
+  }
+
+  async function handleDelete(id: string) {
+    await deleteCoordinatorItem(id)
+    setItems(prev => prev.filter(i => i.id !== id))
+  }
+
+  async function handleSendAccess() {
+    try {
+      await sendMemberAccess(member.memberEmail)
+      setAccessSent(true)
+      setTimeout(() => setAccessSent(false), 5000)
+    } catch (err) { alert(`Error: ${(err as Error)?.message}`) }
+  }
+
+  async function handleDeleteMember() {
+    if (!confirm(`¿Eliminar a ${member.memberName} como coordinadora?`)) return
+    await deleteProjectMember(member.id)
+    onDeleted()
+  }
+
+  const pending = items.filter(i => !i.done).length
+
+  return (
+    <div className="mx-4 mb-3 bg-sky-50 border border-sky-200 rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-sky-100">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-sky-500 uppercase tracking-wide mb-0.5">Coordinadora de proyecto</p>
+            <p className="text-sm font-semibold text-stone-800">{member.memberName}</p>
+            {member.memberPosition && <p className="text-xs text-stone-500">{member.memberPosition}</p>}
+            <p className="text-[11px] text-stone-400">{member.memberEmail}</p>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <div className="flex gap-2">
+              <button onClick={() => onEdit(member)} className="text-[11px] text-stone-400 hover:text-stone-600">Editar</button>
+              <button onClick={handleDeleteMember} className="text-[11px] text-stone-300 hover:text-red-400">✕</button>
+            </div>
+            <button
+              onClick={handleSendAccess}
+              disabled={accessSent}
+              className={`text-[10px] ${accessSent ? 'text-emerald-500' : 'text-sky-500 hover:text-sky-700'}`}
+            >
+              {accessSent ? '✓ Email enviado' : 'Enviar acceso'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Pendientes generales */}
+      <div className="px-4 pt-3 pb-4">
+        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wide mb-2">
+          Pendientes generales
+          {pending > 0 && (
+            <span className="ml-1.5 bg-sky-100 text-sky-600 rounded-full px-1.5 py-0.5 normal-case font-normal">{pending}</span>
+          )}
+        </p>
+
+        {loading ? (
+          <p className="text-xs text-stone-300 py-2">Cargando...</p>
+        ) : (
+          <div className="space-y-1.5 mb-3">
+            {items.length === 0 && (
+              <p className="text-xs text-stone-300 italic">Sin pendientes</p>
+            )}
+            {items.map(item => (
+              <div key={item.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggle(item)}
+                  className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                    item.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300'
+                  }`}
+                >
+                  {item.done && <span className="text-[9px] leading-none">✓</span>}
+                </button>
+                <span className={`text-xs flex-1 ${item.done ? 'line-through text-stone-400' : 'text-stone-700'}`}>
+                  {item.text}
+                </span>
+                <button onClick={() => handleDelete(item.id)} className="text-[10px] text-stone-200 hover:text-red-400 flex-shrink-0">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input nuevo pendiente */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newText}
+            onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
+            placeholder="Agregar pendiente..."
+            className="flex-1 text-xs border border-sky-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-200"
+          />
+          <button
+            onClick={handleAdd}
+            disabled={saving || !newText.trim()}
+            className="text-xs font-semibold text-sky-600 hover:text-sky-800 disabled:opacity-40 px-1"
+          >
+            + Agregar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -244,29 +387,40 @@ export default function MembersSection({ projectId }: Props) {
   function openAdd() { setEditing(null); setModal(true) }
   function openEdit(m: ProjectMember) { setEditing(m); setModal(true) }
 
+  const coordinators = members.filter(m => m.memberRole === 'coordinator')
+  const owners       = members.filter(m => m.memberRole !== 'coordinator')
+
   return (
-    <div className="mx-4 mb-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-50">
-        <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
-          Responsables de proceso
-          {members.length > 0 && (
-            <span className="ml-1.5 bg-stone-100 text-stone-500 rounded-full px-1.5 py-0.5 text-[10px]">
-              {members.length}
-            </span>
-          )}
-        </p>
-        <button onClick={openAdd} className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">
-          + Agregar
-        </button>
-      </div>
-
-      {members.length === 0 && (
-        <p className="text-xs text-stone-300 text-center py-6 italic">Sin responsables asignados</p>
-      )}
-
-      {members.map(m => (
-        <MemberRow key={m.id} member={m} onEdit={openEdit} onDeleted={load} />
+    <div className="mb-4">
+      {/* Coordinadoras */}
+      {coordinators.map(m => (
+        <CoordinatorRow key={m.id} member={m} onEdit={openEdit} onDeleted={load} />
       ))}
+
+      {/* Responsables de proceso */}
+      <div className="mx-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-50">
+          <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wide">
+            Responsables de proceso
+            {owners.length > 0 && (
+              <span className="ml-1.5 bg-stone-100 text-stone-500 rounded-full px-1.5 py-0.5 text-[10px]">
+                {owners.length}
+              </span>
+            )}
+          </p>
+          <button onClick={openAdd} className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">
+            + Agregar
+          </button>
+        </div>
+
+        {owners.length === 0 && (
+          <p className="text-xs text-stone-300 text-center py-6 italic">Sin responsables asignados</p>
+        )}
+
+        {owners.map(m => (
+          <MemberRow key={m.id} member={m} onEdit={openEdit} onDeleted={load} />
+        ))}
+      </div>
 
       <MemberModal
         open={showModal}
