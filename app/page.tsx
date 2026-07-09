@@ -1,4 +1,4 @@
-import AppShellWrapper from '@/components/AppShellWrapper'
+import AppShell from '@/components/AppShell'
 
 export default function Home() {
   return <AppShellWrapper />

@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
-import { ensureInternalClients, ensureInternalSubtopics } from '@/lib/services/clients.service'
-import { ensureProfile, getCurrentUserRole } from '@/lib/services/iso.service'
-import { useClients } from '@/lib/hooks/useClients'
-import CalendarView from '@/components/CalendarView'
+import { useState, useEffect, useCallback } from 'react'
+import { getClients } from '@/lib/storage'
+import type { Client } from '@/lib/types'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
+
+import CalendarView  from '@/components/CalendarView'
 import DashboardView from '@/components/DashboardView'
 import HistorialView from '@/components/HistorialView'
 import ClientesView from '@/components/ClientesView'
@@ -37,15 +36,15 @@ function LoginScreen({ onSignedIn }: { onSignedIn: (session: Session | null) => 
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
 
-  async function handleLogin() {
-    if (!email.trim() || !password) { setError('Ingresá email y contraseña'); return }
-    setLoading(true)
-    setError('')
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    setLoading(false)
-    if (error) { setError(error.message); return }
-    onSignedIn(data.session)
-  }
+  // 👇 TEST SUPABASE
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+
+    async function testSupabase() {
+      const { data, error } = await supabase.from('clients').select('*')
+      console.log('SUPABASE CLIENTS:', data)
+      console.log('SUPABASE ERROR:', error)
+    }
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">

@@ -140,7 +140,7 @@ create policy "own data" on recur_defs   for all using (auth.uid() = user_id);
 
 ### Variables de entorno
 
-Crear `.env.local`:
+Copia `.env.example` a `.env.local` y reemplaza con tus datos de Supabase:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
