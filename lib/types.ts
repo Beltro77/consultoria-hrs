@@ -34,6 +34,7 @@ export interface Client {
   name: string
   rate?: number        // USD per hour
   colorIndex: number
+  createdAt?: string   // ISO timestamp when the client was created
 }
 
 export interface HourEntry {

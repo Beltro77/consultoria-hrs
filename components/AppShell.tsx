@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getClients } from '@/lib/storage'
 import type { Client } from '@/lib/types'
-import { supabase } from '@/lib/supabase' // 👈 NUEVO
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 
 import CalendarView  from '@/components/CalendarView'
 import DashboardView from '@/components/DashboardView'
@@ -33,6 +33,8 @@ const refresh = useCallback(async () => {
 
   // 👇 TEST SUPABASE
   useEffect(() => {
+    if (!isSupabaseConfigured) return
+
     async function testSupabase() {
       const { data, error } = await supabase.from('clients').select('*')
       console.log('SUPABASE CLIENTS:', data)
