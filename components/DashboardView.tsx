@@ -122,12 +122,15 @@ export default function DashboardView({ clients }: Props) {
       const activeClientIds = new Set(monthEntries.map(e => e.clientId))
       const newActive = [...activeClientIds].filter(id => firstSeenByClient.get(id) === monthKey).length
 
+      // count clients created in this month (if createdAt is available)
+      const potentialCreated = clients.filter(c => c.createdAt && c.createdAt.startsWith(monthKey)).length
+
       return {
         key: monthKey,
         label: `${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}`,
         active: activeClientIds.size,
-        potential: Math.max(0, clients.length - activeClientIds.size),
-        newActive,
+        potentialCreated,
+        converted: newActive,
       }
     })
   }, [clients.length, entries, today])
@@ -351,19 +354,22 @@ const MesTab = memo(function MesTab({
               <div key={item.key} className="rounded-lg border border-stone-100 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-stone-700">{item.label}</span>
-                  <span className="text-xs text-stone-400">{item.newActive} pasaron a activos</span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-stone-800"
-                      style={{ width: `${Math.min(100, (item.active / Math.max(1, clients.length)) * 100)}%` }}
-                    />
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.potentialCreated}</p>
+                    <p className="text-xs text-stone-400">potenciales creados</p>
                   </div>
-                  <div className="text-right min-w-[92px]">
-                    <p className="text-sm font-semibold text-stone-800">{item.active} activos</p>
-                    <p className="text-xs text-stone-400">{item.potential} potenciales</p>
+
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.converted}</p>
+                    <p className="text-xs text-stone-400">convertidos a activos</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.active}</p>
+                    <p className="text-xs text-stone-400">activos (mes)</p>
                   </div>
                 </div>
               </div>

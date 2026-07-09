@@ -43,6 +43,7 @@ export async function getClients(): Promise<Client[]> {
     name: c.name,
     rate: c.rate ?? undefined,
     colorIndex: c.color_index ?? 0,
+    createdAt: c.created_at ?? undefined,
   }))
 }
 
