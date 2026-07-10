@@ -5,6 +5,7 @@ import { type Client, type HourEntry, Period, MONTHS_SHORT, ENTRY_TASK_TYPES } f
 import { getEntriesDB } from '@/lib/storage'
 import { SectionTitle } from '@/components/ui'
 import HistorialView from '@/components/HistorialView'
+import MetricsTable from '@/components/dashboard/MetricsTable'
 
 type DashTab = 'mes' | 'cliente' | 'actividad' | 'historial'
 interface Props {
@@ -106,31 +107,26 @@ export default function DashboardView({ clients }: Props) {
   })
 
   const monthlyClientStatus = useMemo(() => {
-    const firstSeenByClient = new Map<string, string>()
-    const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date))
-
-    sortedEntries.forEach(e => {
-      if (!firstSeenByClient.has(e.clientId)) {
-        firstSeenByClient.set(e.clientId, e.date.slice(0, 7))
-      }
-    })
-
     return Array.from({ length: 6 }, (_, index) => {
       const date = new Date(today.getFullYear(), today.getMonth() - index, 1)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+      // active clients in the month (based on entries)
       const monthEntries = entries.filter(e => e.date.startsWith(monthKey))
       const activeClientIds = new Set(monthEntries.map(e => e.clientId))
-      const newActive = [...activeClientIds].filter(id => firstSeenByClient.get(id) === monthKey).length
 
       // count clients created in this month (if createdAt is available)
-      const potentialCreated = clients.filter(c => c.createdAt && c.createdAt.startsWith(monthKey)).length
+      const potentialCreated = clients.filter(c => (c as any).createdAt && (c as any).createdAt.startsWith(monthKey)).length
+
+      // converted = clients whose sinceDate falls in this month (relies on clients.sinceDate being set)
+      const converted = clients.filter(c => (c as any).sinceDate && (c as any).sinceDate.startsWith(monthKey)).length
 
       return {
         key: monthKey,
         label: `${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}`,
         active: activeClientIds.size,
         potentialCreated,
-        converted: newActive,
+        converted,
       }
     })
   }, [clients.length, entries, today])
@@ -138,6 +134,7 @@ export default function DashboardView({ clients }: Props) {
   return (
     <div className="p-4">
       <SectionTitle>Dashboard</SectionTitle>
+      <MetricsTable />
 
       {/* Top tabs */}
       <div className="flex items-center justify-center gap-3 mb-4">
