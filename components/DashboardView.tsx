@@ -1,11 +1,25 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { type Client, type HourEntry, Period, MONTHS_SHORT, ENTRY_TASK_TYPES } from '@/lib/types'
-import { getEntriesDB } from '@/lib/storage'
-import { SectionTitle } from '@/components/ui'
-import HistorialView from '@/components/HistorialView'
-import MetricsTable from '@/components/dashboard/MetricsTable'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  MONTHS_FULL,
+  MONTHS_SHORT,
+  INTERNAL_CLIENT_ROOT_NAME,
+  clientColor,
+  ENTRY_TASK_COLORS,
+  type Client,
+  type Period,
+} from '@/lib/types'
+import { useHourEntries } from '@/lib/hooks/useHourEntries'
+import { useSubtopics } from '@/lib/hooks/useSubtopics'
+import {
+  Avatar,
+  Card,
+  HourBar,
+  MetricCard,
+  PeriodFilter,
+  SectionTitle,
+} from '@/components/ui'
 
 type DashTab = 'mes' | 'cliente' | 'actividad' | 'historial'
 interface Props {
@@ -32,9 +46,13 @@ function entriesForPeriod(entries: any[], period: Period, month: number, year: n
 }
 
 export default function DashboardView({ clients }: Props) {
-  const [entries, setEntries] = useState<HourEntry[]>([])
-  const [tab, setTab] = useState<'mes' | 'cliente' | 'actividad' | 'historial'>('mes')
-  const [period, setPeriod] = useState<Period>('mes')
+  const [tab, setTab] = useState<DashTab>('mes')
+  const [month, setMonth] = useState(new Date().getMonth())
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [cliPeriod, setCliPeriod] = useState<Period>('mes')
+  const [actPeriod, setActPeriod] = useState<Period>('mes')
+  const donutRef = useRef<HTMLCanvasElement>(null)
+  const { entries } = useHourEntries()
 
   // Computed once and passed to all tabs — eliminates 3 duplicate useSubtopics calls
   const catalizar = useMemo(
@@ -101,12 +119,8 @@ export default function DashboardView({ clients }: Props) {
     })
   }, [tab, month, year, entries, clients, internalIds])
 
-  const byTask: Record<string, number> = {}
-  filtered.forEach(e => {
-    byTask[e.task] = (byTask[e.task] || 0) + e.hours
-  })
-
   const monthlyClientStatus = useMemo(() => {
+    const today = new Date()
     return Array.from({ length: 6 }, (_, index) => {
       const date = new Date(today.getFullYear(), today.getMonth() - index, 1)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -115,10 +129,10 @@ export default function DashboardView({ clients }: Props) {
       const monthEntries = entries.filter(e => e.date.startsWith(monthKey))
       const activeClientIds = new Set(monthEntries.map(e => e.clientId))
 
-      // count clients created in this month (if createdAt is available)
-      const potentialCreated = clients.filter(c => (c as any).createdAt && (c as any).createdAt.startsWith(monthKey)).length
+      // clients created in this month
+      const potentialCreated = clients.filter(c => c.createdAt?.startsWith(monthKey)).length
 
-      // converted = clients whose sinceDate falls in this month (relies on clients.sinceDate being set)
+      // converted = clients whose sinceDate falls in this month
       const converted = clients.filter(c => (c as any).sinceDate && (c as any).sinceDate.startsWith(monthKey)).length
 
       return {
@@ -129,37 +143,14 @@ export default function DashboardView({ clients }: Props) {
         converted,
       }
     })
-  }, [clients.length, entries, today])
+  }, [clients, entries])
 
   return (
     <div className="p-4">
       <SectionTitle>Dashboard</SectionTitle>
-      <MetricsTable />
 
-      {/* Top tabs */}
-      <div className="flex items-center justify-center gap-3 mb-4">
-        {[
-          { id: 'mes', label: 'Mes' },
-          { id: 'cliente', label: 'Cliente' },
-          { id: 'actividad', label: 'Actividad' },
-          { id: 'historial', label: 'Historial' },
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id as any)}
-            className={`px-4 py-2 rounded-full text-sm transition ${tab === t.id ? 'bg-white border border-stone-200 text-stone-800' : 'bg-stone-100 text-stone-400'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Render tab content */}
-      {tab === 'mes' && (
-        <>
-      {/* Selector período */}
-      <div className="flex gap-2 mb-4">
-        {['mes', 'trim', 'año'].map(p => (
+      <div className="flex gap-0.5 bg-stone-100 rounded-lg p-0.5 mb-4">
+        {(['mes', 'cliente', 'actividad', 'historial'] as DashTab[]).map(item => (
           <button
             key={item}
             onClick={() => setTab(item)}
@@ -217,6 +208,45 @@ export default function DashboardView({ clients }: Props) {
           internalIds={internalIds}
         />
       )}
+
+      {/* Clientes potenciales vs. activos */}
+      <div className="bg-white border border-stone-200 rounded-xl p-4 mt-4">
+        <SectionTitle>Clientes potenciales vs. activos</SectionTitle>
+        <p className="text-sm text-stone-400 mb-3">
+          Resumen mensual de clientes que ya están activos y los que siguen como potenciales.
+        </p>
+
+        {!clients.length ? (
+          <p className="text-sm text-stone-400 py-4">Agregá clientes para ver este tablero</p>
+        ) : (
+          <div className="space-y-3">
+            {monthlyClientStatus.map(item => (
+              <div key={item.key} className="rounded-lg border border-stone-100 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-stone-700">{item.label}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.potentialCreated}</p>
+                    <p className="text-xs text-stone-400">potenciales creados</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.converted}</p>
+                    <p className="text-xs text-stone-400">convertidos a activos</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-stone-800">{item.active}</p>
+                    <p className="text-xs text-stone-400">activos (mes)</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -283,101 +313,12 @@ const MesTab = memo(function MesTab({
         <button onClick={() => changeMonth(1)} className="text-stone-400 px-2 text-xl">›</button>
       </div>
 
-        </>
-      )}
-
-      {tab === 'cliente' && (
-        <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
-          <SectionTitle>Distribución del mes</SectionTitle>
-          {!Object.keys(byClient).length ? (
-            <p className="text-sm text-stone-400 py-4">Sin datos</p>
-          ) : (
-            <div className="space-y-2">
-              {Object.entries(byClient)
-                .sort((a, b) => b[1] - a[1])
-                .map(([clientId, hours]) => {
-                  const client = clients.find(c => c.id === clientId)
-                  return (
-                    <div key={clientId} className="flex justify-between py-2 border-b border-stone-100 last:border-0">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-stone-800 truncate">{client?.name || clientId}</p>
-                        <p className="text-xs text-stone-400">{hours.toFixed(1)} hs</p>
-                      </div>
-                      <div className="text-sm font-semibold text-stone-700">{Math.round((hours / Math.max(1, Object.values(byClient).reduce((a,b)=>a+b,0))) * 100)}%</div>
-                    </div>
-                  )
-                })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'actividad' && (
-        <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
-          <SectionTitle>Actividad</SectionTitle>
-          {!Object.keys(byTask).length ? (
-            <p className="text-sm text-stone-400 py-4">Sin datos</p>
-          ) : (
-            <div className="space-y-2">
-              {ENTRY_TASK_TYPES.map(t => (
-                <div key={t} className="flex justify-between py-2 border-b border-stone-100 last:border-0">
-                  <div className="text-sm text-stone-700">{t}</div>
-                  <div className="text-sm font-semibold text-stone-800">{(byTask[t] || 0).toFixed(1)} hs</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'historial' && (
-        <div className="bg-white border border-stone-200 rounded-xl p-0 mb-4">
-          <HistorialView clients={clients} onDataChange={async () => { await loadEntries() }} />
-        </div>
-      )}
-
-      {/* Clientes potenciales vs activos */}
-      <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
-        <SectionTitle>Clientes potenciales vs. activos</SectionTitle>
-        <p className="text-sm text-stone-400 mb-3">
-          Resumen mensual de clientes que ya están activos y los que siguen como potenciales.
-        </p>
-
-        {!clients.length ? (
-          <p className="text-sm text-stone-400 py-4">Agregá clientes para ver este tablero</p>
-        ) : (
-          <div className="space-y-3">
-            {monthlyClientStatus.map(item => (
-              <div key={item.key} className="rounded-lg border border-stone-100 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-stone-700">{item.label}</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div>
-                    <p className="text-sm font-semibold text-stone-800">{item.potentialCreated}</p>
-                    <p className="text-xs text-stone-400">potenciales creados</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold text-stone-800">{item.converted}</p>
-                    <p className="text-xs text-stone-400">convertidos a activos</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold text-stone-800">{item.active}</p>
-                    <p className="text-xs text-stone-400">activos (mes)</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        <MetricCard label="Horas totales" value={total.toFixed(1)} sub="este mes" />
+        <MetricCard label="Facturables" value={clientTotal.toFixed(1)} sub="clientes" />
+        <MetricCard label="Catalizar" value={internalTotal.toFixed(1)} sub="interno" />
+        <MetricCard label="Días activos" value={String(activeDays)} sub="con registro" />
       </div>
-
-      {/* Por cliente */}
-      <div className="bg-white border border-stone-200 rounded-xl p-4">
-        <SectionTitle>Horas por cliente</SectionTitle>
 
       <Card className="mb-3">
         <SectionTitle>Evolución últimos 6 meses</SectionTitle>

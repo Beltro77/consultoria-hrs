@@ -80,6 +80,18 @@ export interface Client {
   name: string
   rate?: number        // USD per hour
   colorIndex: number
+  status?: ClientStatus
+  sourceType?: ClientSourceType
+  description?: string
+  serviceCategory?: ClientServiceCategory
+  notes?: string
+  sinceDate?: string   // YYYY-MM-DD
+  nextActionDate?: string
+  contactName?: string
+  contactPosition?: string
+  contactEmail?: string
+  contactPhone?: string
+  website?: string
   createdAt?: string   // ISO timestamp when the client was created
 }
 
