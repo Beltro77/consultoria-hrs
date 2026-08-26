@@ -384,7 +384,11 @@ const INACTIVE_STATUSES  = new Set(['inactivo'])
 const LOST_STATUSES      = new Set(['perdido'])
 const POTENTIAL_STATUSES = new Set(['lead', 'contacto_inicial', 'propuesta_enviada', 'negociacion'])
 
-type ClientTab = 'clientes' | 'potenciales' | 'inactivos' | 'perdidos'
+function isAuditInterna(c: Client) {
+  return c.serviceCategory === 'auditoria_interna'
+}
+
+type ClientTab = 'clientes' | 'auditoria' | 'potenciales' | 'inactivos' | 'perdidos'
 
 export default function ClientesView({ clients, onDataChange, onDeleteClient }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
@@ -398,12 +402,14 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
   const { subtopics, addSubtopic, removeSubtopic } = useSubtopics(catalizar?.id ?? null)
   const allNormalClients = clients.filter(c => c.name !== INTERNAL_CLIENT_ROOT_NAME)
   const normalClients = allNormalClients.filter(c =>
-    clientTab === 'clientes'    ? ACTIVE_STATUSES.has(c.status as any)
+    clientTab === 'clientes'    ? ACTIVE_STATUSES.has(c.status as any) && !isAuditInterna(c)
+    : clientTab === 'auditoria'   ? ACTIVE_STATUSES.has(c.status as any) && isAuditInterna(c)
     : clientTab === 'potenciales' ? POTENTIAL_STATUSES.has(c.status as any)
     : clientTab === 'inactivos'   ? INACTIVE_STATUSES.has(c.status as any)
     : LOST_STATUSES.has(c.status as any)
   )
-  const activeCount    = allNormalClients.filter(c => ACTIVE_STATUSES.has(c.status as any)).length
+  const activeCount    = allNormalClients.filter(c => ACTIVE_STATUSES.has(c.status as any) && !isAuditInterna(c)).length
+  const auditCount     = allNormalClients.filter(c => ACTIVE_STATUSES.has(c.status as any) && isAuditInterna(c)).length
   const potentialCount = allNormalClients.filter(c => POTENTIAL_STATUSES.has(c.status as any)).length
   const inactivosCount = allNormalClients.filter(c => INACTIVE_STATUSES.has(c.status as any)).length
   const lostCount      = allNormalClients.filter(c => LOST_STATUSES.has(c.status as any)).length
@@ -505,6 +511,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
       <div className="flex border border-stone-200 rounded-xl overflow-hidden mb-3 bg-white">
         {([
           { id: 'clientes',    label: 'Clientes',    count: activeCount,    activeClass: 'bg-stone-800 text-white' },
+          { id: 'auditoria',   label: 'Auditoría',   count: auditCount,     activeClass: 'bg-sky-700 text-white' },
           { id: 'potenciales', label: 'Potenciales', count: potentialCount, activeClass: 'bg-stone-800 text-white' },
           { id: 'inactivos',   label: 'Inactivos',   count: inactivosCount, activeClass: 'bg-stone-500 text-white' },
           { id: 'perdidos',    label: 'Perdidos',    count: lostCount,      activeClass: 'bg-red-600 text-white' },
@@ -535,6 +542,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
             <p className="text-sm text-stone-400">
               {clientTab === 'perdidos'  ? 'Sin oportunidades perdidas'
                : clientTab === 'inactivos' ? 'Sin clientes inactivos'
+               : clientTab === 'auditoria' ? 'Sin clientes de auditoría interna'
                : 'Agregá tu primer cliente'}
             </p>
           </div>
@@ -560,7 +568,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
         )}
       </div>
 
-      {(clientTab === 'clientes' || clientTab === 'potenciales') && (
+      {(clientTab === 'clientes' || clientTab === 'auditoria' || clientTab === 'potenciales') && (
         <Btn onClick={() => setModalOpen(true)}>+ Nuevo cliente</Btn>
       )}
 
@@ -569,6 +577,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
         onClose={() => setModalOpen(false)}
         onSaved={async () => { setModalOpen(false); await onDataChange() }}
         initialStatus={clientTab === 'potenciales' ? 'lead' : 'activo'}
+        initialServiceCategory={clientTab === 'auditoria' ? 'auditoria_interna' : undefined}
       />
     </div>
   )

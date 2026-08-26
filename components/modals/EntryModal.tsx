@@ -36,7 +36,7 @@ export default function EntryModal({
 }: Props) {
   const isCatalizarClient = (client: Client) => client.name === INTERNAL_CLIENT_ROOT_NAME
   const catalizar = clients.find(isCatalizarClient)
-  const billingStatuses = new Set(['activo', 'confirmado', 'pausado'])
+  const billingStatuses = new Set(['activo', 'confirmado'])
   const normalClients = clients.filter(c => !isCatalizarClient(c) && billingStatuses.has(c.status ?? ''))
   const clientOptions = catalizar ? [catalizar, ...normalClients] : normalClients
 

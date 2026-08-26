@@ -20,6 +20,7 @@ interface Props {
   onClose: () => void
   onSaved: () => Promise<void> | void
   initialStatus?: ClientStatus
+  initialServiceCategory?: ClientServiceCategory
 }
 
 const ACTIVE_STATUS_OPTIONS: ClientStatus[] = ['activo', 'confirmado', 'pausado', 'inactivo']
@@ -29,7 +30,7 @@ function isPotential(s: ClientStatus) {
   return POTENTIAL_STATUS_OPTIONS.includes(s)
 }
 
-export default function ClientModal({ open, onClose, onSaved, initialStatus = 'activo' }: Props) {
+export default function ClientModal({ open, onClose, onSaved, initialStatus = 'activo', initialServiceCategory }: Props) {
   const [name, setName]               = useState('')
   const [rate, setRate]               = useState('')
   const [colorIndex, setColorIndex]   = useState(0)
@@ -53,13 +54,13 @@ export default function ClientModal({ open, onClose, onSaved, initialStatus = 'a
       setColorIndex(0)
       setSourceType('')
       setDescription('')
-      setServiceCategory('')
+      setServiceCategory(initialServiceCategory ?? '')
       setContactName('')
       setContactPos('')
       setContactEmail('')
       setContactPhone('')
     }
-  }, [open, initialStatus])
+  }, [open, initialStatus, initialServiceCategory])
 
   function handleTypeChange(type: 'activo' | 'potencial') {
     setClientType(type)
@@ -128,16 +129,16 @@ export default function ClientModal({ open, onClose, onSaved, initialStatus = 'a
         placeholder="Ej: Acme S.A."
       />
 
+      <Label>{clientType === 'potencial' ? 'Servicio requerido' : 'Categoría de servicio'}</Label>
+      <Select value={serviceCategory} onChange={e => setServiceCategory(e.target.value as ClientServiceCategory | '')}>
+        <option value="">Sin especificar</option>
+        {CLIENT_SERVICE_CATEGORIES.map(c => (
+          <option key={c} value={c}>{CLIENT_SERVICE_CATEGORY_LABELS[c]}</option>
+        ))}
+      </Select>
+
       {clientType === 'potencial' && (
         <>
-          <Label>Servicio requerido</Label>
-          <Select value={serviceCategory} onChange={e => setServiceCategory(e.target.value as ClientServiceCategory | '')}>
-            <option value="">Sin especificar</option>
-            {CLIENT_SERVICE_CATEGORIES.map(c => (
-              <option key={c} value={c}>{CLIENT_SERVICE_CATEGORY_LABELS[c]}</option>
-            ))}
-          </Select>
-
           <Label>Descripción del cliente (opcional)</Label>
           <Textarea
             value={description}
