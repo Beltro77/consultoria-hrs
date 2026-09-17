@@ -5,6 +5,7 @@ import './globals.css'
 const dm = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['400', '500'] })
 
 export const metadata: Metadata = {
+  metadataBase: process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL) : undefined,
   title: 'Consultoría Hrs',
   description: 'Seguimiento de horas y tareas de consultoría',
   manifest: '/manifest.json',
