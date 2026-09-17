@@ -10,8 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    // TODO: agregar /public/og-intake.png (1200x630) con la marca Catalizar.
-    // Mientras no exista, WhatsApp mostrará la tarjeta sin imagen.
+    // Placeholder generado con los colores de marca; reemplazar por un diseño final si hace falta.
     images: [{ url: '/og-intake.png', width: 1200, height: 630 }],
     locale: 'es_AR',
     type: 'website',
