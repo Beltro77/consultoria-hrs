@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { Card, Input, Textarea, Select, Label, Btn } from '@/components/ui'
-import { submitIntakeLead } from '@/lib/services/intakeLeads.service'
+import { NECESIDAD_OPTIONS, submitIntakeLead } from '@/lib/services/intakeLeads.service'
 
 const PLAZO_OPTIONS = [
   'Inmediato',
@@ -11,6 +11,25 @@ const PLAZO_OPTIONS = [
   '3 a 6 meses',
   'Más de 6 meses',
   'Todavía no lo sé',
+]
+
+const CARGO_OPTIONS = [
+  'Dueño',
+  'Gerente',
+  'Analista de compras',
+  'Analista operativo',
+  'Analista administrativo',
+  'Coordinador',
+  'Otro',
+]
+
+const SUCURSALES_OPTIONS = [
+  'Entre 1 y 10',
+  'Entre 11 y 20',
+  'Entre 21 y 50',
+  'Entre 51 y 100',
+  'Entre 100 y 200',
+  'Más de 200',
 ]
 
 const URL_RE = /^https?:\/\/.+\..+/i
@@ -58,6 +77,7 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
   const [cantidadPersonal, setCantidadPersonal] = useState('')
   const [plazoProyecto, setPlazoProyecto] = useState('')
   const [necesidad, setNecesidad] = useState('')
+  const [observaciones, setObservaciones] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -83,10 +103,11 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
         contactoPosicion,
         sitioWeb,
         direccion,
-        cantidadSucursales: cantidadSucursales ? Number(cantidadSucursales) : undefined,
+        cantidadSucursales: cantidadSucursales || undefined,
         cantidadPersonal: cantidadPersonal ? Number(cantidadPersonal) : undefined,
         plazoProyecto,
         necesidad,
+        observaciones,
         leadRef,
       })
       setSubmitted(true)
@@ -121,7 +142,10 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
           <Input value={contactoNombre} onChange={e => setContactoNombre(e.target.value)} placeholder="Nombre y apellido" autoComplete="name" />
 
           <Label>Tu cargo</Label>
-          <Input value={contactoPosicion} onChange={e => setContactoPosicion(e.target.value)} placeholder="Ej: Gerente de operaciones" autoComplete="organization-title" />
+          <Select value={contactoPosicion} onChange={e => setContactoPosicion(e.target.value)}>
+            <option value="">Seleccioná una opción</option>
+            {CARGO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </Select>
 
           <Label>Sitio web</Label>
           <Input type="url" value={sitioWeb} onChange={e => setSitioWeb(e.target.value)} placeholder="https://tuempresa.com" autoCapitalize="none" autoCorrect="off" />
@@ -132,7 +156,10 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Sucursales</Label>
-              <Input type="number" inputMode="numeric" min={0} value={cantidadSucursales} onChange={e => setCantidadSucursales(e.target.value)} placeholder="0" />
+              <Select value={cantidadSucursales} onChange={e => setCantidadSucursales(e.target.value)}>
+                <option value="">Elegí un rango</option>
+                {SUCURSALES_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </Select>
             </div>
             <div>
               <Label>Personal</Label>
@@ -147,7 +174,13 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
           </Select>
 
           <Label>¿Qué necesitás? *</Label>
-          <Textarea value={necesidad} onChange={e => setNecesidad(e.target.value)} placeholder="Contanos brevemente qué estás buscando" rows={4} />
+          <Select value={necesidad} onChange={e => setNecesidad(e.target.value)}>
+            <option value="">Seleccioná una opción</option>
+            {NECESIDAD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+
+          <Label>Observaciones</Label>
+          <Textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} placeholder="Algo más que quieras contarnos (opcional)" rows={3} />
         </Card>
 
         <div className="mt-5">

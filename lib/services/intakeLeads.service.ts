@@ -1,7 +1,31 @@
 import { supabase } from '@/lib/supabase'
 import { createClientFromLead } from '@/lib/services/clients.service'
+import type { ClientServiceCategory } from '@/lib/types'
 
 const TABLE = 'intake_leads'
+
+// Claves compartidas con las 3 primeras opciones de ClientServiceCategory
+// (lib/types.ts), así la respuesta del intake mapea directo al cliente al convertir.
+export const NECESIDAD_OPTIONS: { value: string; label: string }[] = [
+  { value: 'iso9001',           label: 'Implementación ISO 9001' },
+  { value: 'upgrade_iso2026',   label: 'Migración a ISO 9001 2026' },
+  { value: 'auditoria_interna', label: 'Auditoría interna' },
+  { value: 'otra',              label: 'Otra' },
+]
+
+const NECESIDAD_LABELS: Record<string, string> = Object.fromEntries(
+  NECESIDAD_OPTIONS.map(o => [o.value, o.label])
+)
+
+export function necesidadLabel(value: string): string {
+  return NECESIDAD_LABELS[value] ?? value
+}
+
+const NECESIDAD_TO_SERVICE_CATEGORY: Record<string, ClientServiceCategory> = {
+  iso9001: 'iso9001',
+  upgrade_iso2026: 'upgrade_iso2026',
+  auditoria_interna: 'auditoria_interna',
+}
 
 export interface IntakeLeadInput {
   empresa: string
@@ -9,10 +33,11 @@ export interface IntakeLeadInput {
   contactoPosicion?: string
   sitioWeb?: string
   direccion?: string
-  cantidadSucursales?: number
+  cantidadSucursales?: string
   cantidadPersonal?: number
   plazoProyecto?: string
   necesidad: string
+  observaciones?: string
   leadRef?: string | null
 }
 
@@ -24,10 +49,11 @@ export interface IntakeLead {
   contactoPosicion?: string
   sitioWeb?: string
   direccion?: string
-  cantidadSucursales?: number
+  cantidadSucursales?: string
   cantidadPersonal?: number
   plazoProyecto?: string
   necesidad: string
+  observaciones?: string
   leadRef?: string
   convertedClientId?: string
 }
@@ -45,6 +71,7 @@ function mapIntakeLead(row: any): IntakeLead {
     cantidadPersonal:   row.cantidad_personal ?? undefined,
     plazoProyecto:      row.plazo_proyecto ?? undefined,
     necesidad:          row.necesidad,
+    observaciones:      row.observaciones ?? undefined,
     leadRef:            row.lead_ref ?? undefined,
     convertedClientId:  row.converted_client_id ?? undefined,
   }
@@ -57,10 +84,11 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
     contacto_posicion:    input.contactoPosicion?.trim() || null,
     sitio_web:            input.sitioWeb?.trim() || null,
     direccion:            input.direccion?.trim() || null,
-    cantidad_sucursales:  input.cantidadSucursales ?? null,
+    cantidad_sucursales:  input.cantidadSucursales || null,
     cantidad_personal:    input.cantidadPersonal ?? null,
     plazo_proyecto:       input.plazoProyecto?.trim() || null,
     necesidad:            input.necesidad.trim(),
+    observaciones:        input.observaciones?.trim() || null,
     lead_ref:             input.leadRef || null,
   }
 
@@ -101,8 +129,9 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
   const notes = [
     lead.plazoProyecto && `Plazo estimado: ${lead.plazoProyecto}`,
     lead.direccion && `Dirección: ${lead.direccion}`,
-    lead.cantidadSucursales != null && `Sucursales: ${lead.cantidadSucursales}`,
+    lead.cantidadSucursales && `Sucursales: ${lead.cantidadSucursales}`,
     lead.cantidadPersonal != null && `Personal: ${lead.cantidadPersonal}`,
+    lead.observaciones && `Observaciones: ${lead.observaciones}`,
     lead.leadRef && `Ref. de envío: ${lead.leadRef}`,
   ].filter(Boolean).join('\n')
 
@@ -111,7 +140,8 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
     contactName: lead.contactoNombre,
     contactPosition: lead.contactoPosicion,
     website: lead.sitioWeb,
-    description: lead.necesidad,
+    serviceCategory: NECESIDAD_TO_SERVICE_CATEGORY[lead.necesidad],
+    description: necesidadLabel(lead.necesidad),
     notes: notes || undefined,
   })
 

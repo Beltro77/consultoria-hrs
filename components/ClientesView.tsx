@@ -21,7 +21,7 @@ import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { useClientInteractions } from '@/lib/hooks/useClientInteractions'
 import { useIntakeLeads } from '@/lib/hooks/useIntakeLeads'
 import { getClient, updateClient } from '@/lib/services/clients.service'
-import type { IntakeLead } from '@/lib/services/intakeLeads.service'
+import { necesidadLabel, type IntakeLead } from '@/lib/services/intakeLeads.service'
 import { Avatar, Btn, BottomSheet, Input, Label, Select, SectionTitle, Textarea } from '@/components/ui'
 import ClientModal from '@/components/modals/ClientModal'
 import ClientDetailView from '@/components/ClientDetailView'
@@ -580,7 +580,10 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
                   </span>
                 )}
               </div>
-              <p className="text-xs text-stone-600 mt-2 line-clamp-2">{lead.necesidad}</p>
+              <p className="text-xs text-stone-600 mt-2 line-clamp-2">{necesidadLabel(lead.necesidad)}</p>
+              {lead.observaciones && (
+                <p className="text-xs text-stone-400 mt-1 line-clamp-2">{lead.observaciones}</p>
+              )}
               <div className="flex gap-2 mt-3">
                 <Btn onClick={() => handleConvertLead(lead)} className="flex-1">Convertir en potencial</Btn>
                 <Btn variant="ghost" onClick={() => handleDismissLead(lead.id)} className="flex-1">Descartar</Btn>

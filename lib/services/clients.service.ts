@@ -103,6 +103,7 @@ export async function createClientFromLead(input: {
   contactName?: string
   contactPosition?: string
   website?: string
+  serviceCategory?: ClientServiceCategory
   description?: string
   notes?: string
 }): Promise<string> {
@@ -118,6 +119,7 @@ export async function createClientFromLead(input: {
       contact_name: input.contactName ?? null,
       contact_position: input.contactPosition ?? null,
       website: input.website ?? null,
+      service_category: input.serviceCategory ?? null,
       description: input.description ?? null,
       notes: input.notes ?? null,
     })
