@@ -134,12 +134,17 @@ export async function dismissIntakeLead(id: string): Promise<void> {
 }
 
 export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<string> {
+  const necesidadTxt = necesidadLabel(lead.necesidad)
+  // El resumen del cliente prioriza lo que el prospecto escribió en observaciones;
+  // si no puso nada, al menos queda la categoría de necesidad elegida.
+  const description = lead.observaciones || necesidadTxt
+
   const notes = [
+    lead.observaciones && `Necesidad: ${necesidadTxt}`,
     lead.plazoProyecto && `Plazo estimado: ${lead.plazoProyecto}`,
     lead.direccion && `Dirección: ${lead.direccion}`,
     lead.cantidadSucursales && `Sucursales: ${lead.cantidadSucursales}`,
     lead.cantidadPersonal && `Personal: ${lead.cantidadPersonal}`,
-    lead.observaciones && `Observaciones: ${lead.observaciones}`,
     lead.latitud != null && lead.longitud != null &&
       `Ubicación (GPS): https://maps.google.com/?q=${lead.latitud},${lead.longitud}`,
     lead.leadRef && `Ref. de envío: ${lead.leadRef}`,
@@ -151,7 +156,7 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
     contactPosition: lead.contactoPosicion,
     website: lead.sitioWeb,
     serviceCategory: NECESIDAD_TO_SERVICE_CATEGORY[lead.necesidad],
-    description: necesidadLabel(lead.necesidad),
+    description,
     notes: notes || undefined,
   })
 
