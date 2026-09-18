@@ -32,7 +32,14 @@ const RANGO_OPTIONS = [
   'Más de 200',
 ]
 
-const URL_RE = /^https?:\/\/.+\..+/i
+// Acepta con o sin protocolo (ej: "catalizar.com.ar" o "https://catalizar.com.ar").
+const URL_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i
+
+function normalizeUrl(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
 
 function Header() {
   return (
@@ -113,7 +120,7 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
       return
     }
     if (sitioWeb.trim() && !URL_RE.test(sitioWeb.trim())) {
-      setError('Revisá el sitio web (ej: https://tuempresa.com), o dejalo vacío.')
+      setError('Revisá el sitio web (ej: tuempresa.com), o dejalo vacío.')
       return
     }
 
@@ -124,7 +131,7 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
         empresa,
         contactoNombre,
         contactoPosicion,
-        sitioWeb,
+        sitioWeb: normalizeUrl(sitioWeb),
         direccion,
         cantidadSucursales: cantidadSucursales || undefined,
         cantidadPersonal: cantidadPersonal || undefined,
