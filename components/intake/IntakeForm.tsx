@@ -23,6 +23,13 @@ const CARGO_OPTIONS = [
   'Otro',
 ]
 
+const SITIOS_OPTIONS = [
+  'Sitio único',
+  '2 sitios',
+  '3 sitios',
+  'Más de 3 sitios',
+]
+
 const RANGO_OPTIONS = [
   'Entre 1 y 10',
   'Entre 11 y 20',
@@ -204,8 +211,8 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
             <div>
               <Label>Sucursales</Label>
               <Select value={cantidadSucursales} onChange={e => setCantidadSucursales(e.target.value)}>
-                <option value="">Elegí un rango</option>
-                {RANGO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                <option value="">Elegí una opción</option>
+                {SITIOS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </Select>
             </div>
             <div>
