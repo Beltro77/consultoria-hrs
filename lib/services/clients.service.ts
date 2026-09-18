@@ -98,6 +98,40 @@ export async function upsertClient(client: ClientInput): Promise<void> {
   }
 }
 
+export async function createClientFromLead(input: {
+  name: string
+  contactName?: string
+  contactPosition?: string
+  website?: string
+  description?: string
+  notes?: string
+}): Promise<string> {
+  const profile = await getCurrentProfile()
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .insert({
+      name: input.name,
+      color_index: 0,
+      owner_id: profile.id,
+      status: 'lead',
+      contact_name: input.contactName ?? null,
+      contact_position: input.contactPosition ?? null,
+      website: input.website ?? null,
+      description: input.description ?? null,
+      notes: input.notes ?? null,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Error creating client from lead:', error)
+    throw error
+  }
+
+  return data.id
+}
+
 export async function updateClient(client: Client): Promise<void> {
   const payload: Record<string, any> = { updated_at: new Date().toISOString() }
 
