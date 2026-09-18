@@ -73,6 +73,9 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
   const [contactoPosicion, setContactoPosicion] = useState('')
   const [sitioWeb, setSitioWeb] = useState('')
   const [direccion, setDireccion] = useState('')
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState('')
   const [cantidadSucursales, setCantidadSucursales] = useState('')
   const [cantidadPersonal, setCantidadPersonal] = useState('')
   const [plazoProyecto, setPlazoProyecto] = useState('')
@@ -82,6 +85,26 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+
+  function handleUseLocation() {
+    if (!navigator.geolocation) {
+      setGeoError('Tu navegador no permite compartir ubicación. Escribí la dirección a mano.')
+      return
+    }
+    setGeoLoading(true)
+    setGeoError('')
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setGeoLoading(false)
+      },
+      () => {
+        setGeoError('No pudimos obtener tu ubicación. Escribí la dirección a mano, no pasa nada.')
+        setGeoLoading(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }
 
   async function handleSubmit() {
     if (loading) return
@@ -108,6 +131,8 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
         plazoProyecto,
         necesidad,
         observaciones,
+        latitud: coords?.lat,
+        longitud: coords?.lng,
         leadRef,
       })
       setSubmitted(true)
@@ -151,7 +176,22 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
           <Input type="url" value={sitioWeb} onChange={e => setSitioWeb(e.target.value)} placeholder="https://tuempresa.com" autoCapitalize="none" autoCorrect="off" />
 
           <Label>Dirección</Label>
-          <Input value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección principal" autoComplete="street-address" />
+          <Input value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección de la oficina o planta" autoComplete="street-address" />
+          <button
+            type="button"
+            onClick={handleUseLocation}
+            className="mt-1.5 text-xs font-medium text-accent-dark"
+          >
+            {geoLoading
+              ? 'Obteniendo ubicación…'
+              : coords
+              ? '📍 Ubicación guardada — volver a marcar'
+              : '📍 Estoy ahora en esa dirección, usar mi ubicación'}
+          </button>
+          {geoError && <p className="text-xs text-red-600 mt-1">{geoError}</p>}
+          <p className="text-[11px] text-stone-400 mt-1">
+            Usalo solo si estás en la oficina o planta ahora. Si respondés desde tu casa (home office), dejalo así y solo completá la dirección arriba.
+          </p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>

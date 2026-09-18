@@ -38,6 +38,8 @@ export interface IntakeLeadInput {
   plazoProyecto?: string
   necesidad: string
   observaciones?: string
+  latitud?: number
+  longitud?: number
   leadRef?: string | null
 }
 
@@ -54,6 +56,8 @@ export interface IntakeLead {
   plazoProyecto?: string
   necesidad: string
   observaciones?: string
+  latitud?: number
+  longitud?: number
   leadRef?: string
   convertedClientId?: string
 }
@@ -72,6 +76,8 @@ function mapIntakeLead(row: any): IntakeLead {
     plazoProyecto:      row.plazo_proyecto ?? undefined,
     necesidad:          row.necesidad,
     observaciones:      row.observaciones ?? undefined,
+    latitud:            row.latitud ?? undefined,
+    longitud:           row.longitud ?? undefined,
     leadRef:            row.lead_ref ?? undefined,
     convertedClientId:  row.converted_client_id ?? undefined,
   }
@@ -89,6 +95,8 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
     plazo_proyecto:       input.plazoProyecto?.trim() || null,
     necesidad:            input.necesidad.trim(),
     observaciones:        input.observaciones?.trim() || null,
+    latitud:              input.latitud ?? null,
+    longitud:             input.longitud ?? null,
     lead_ref:             input.leadRef || null,
   }
 
@@ -132,6 +140,8 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
     lead.cantidadSucursales && `Sucursales: ${lead.cantidadSucursales}`,
     lead.cantidadPersonal != null && `Personal: ${lead.cantidadPersonal}`,
     lead.observaciones && `Observaciones: ${lead.observaciones}`,
+    lead.latitud != null && lead.longitud != null &&
+      `Ubicación (GPS): https://maps.google.com/?q=${lead.latitud},${lead.longitud}`,
     lead.leadRef && `Ref. de envío: ${lead.leadRef}`,
   ].filter(Boolean).join('\n')
 
