@@ -23,7 +23,7 @@ const CARGO_OPTIONS = [
   'Otro',
 ]
 
-const SUCURSALES_OPTIONS = [
+const RANGO_OPTIONS = [
   'Entre 1 y 10',
   'Entre 11 y 20',
   'Entre 21 y 50',
@@ -32,7 +32,14 @@ const SUCURSALES_OPTIONS = [
   'Más de 200',
 ]
 
-const URL_RE = /^https?:\/\/.+\..+/i
+// Acepta con o sin protocolo (ej: "catalizar.com.ar" o "https://catalizar.com.ar").
+const URL_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i
+
+function normalizeUrl(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
 
 function Header() {
   return (
@@ -113,7 +120,7 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
       return
     }
     if (sitioWeb.trim() && !URL_RE.test(sitioWeb.trim())) {
-      setError('Revisá el sitio web (ej: https://tuempresa.com), o dejalo vacío.')
+      setError('Revisá el sitio web (ej: tuempresa.com), o dejalo vacío.')
       return
     }
 
@@ -124,10 +131,10 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
         empresa,
         contactoNombre,
         contactoPosicion,
-        sitioWeb,
+        sitioWeb: normalizeUrl(sitioWeb),
         direccion,
         cantidadSucursales: cantidadSucursales || undefined,
-        cantidadPersonal: cantidadPersonal ? Number(cantidadPersonal) : undefined,
+        cantidadPersonal: cantidadPersonal || undefined,
         plazoProyecto,
         necesidad,
         observaciones,
@@ -198,12 +205,15 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
               <Label>Sucursales</Label>
               <Select value={cantidadSucursales} onChange={e => setCantidadSucursales(e.target.value)}>
                 <option value="">Elegí un rango</option>
-                {SUCURSALES_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                {RANGO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </Select>
             </div>
             <div>
               <Label>Personal</Label>
-              <Input type="number" inputMode="numeric" min={0} value={cantidadPersonal} onChange={e => setCantidadPersonal(e.target.value)} placeholder="0" />
+              <Select value={cantidadPersonal} onChange={e => setCantidadPersonal(e.target.value)}>
+                <option value="">Elegí un rango</option>
+                {RANGO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </Select>
             </div>
           </div>
 
