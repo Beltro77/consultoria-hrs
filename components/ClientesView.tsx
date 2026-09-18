@@ -19,7 +19,9 @@ import {
 import { useHourEntries } from '@/lib/hooks/useHourEntries'
 import { useSubtopics } from '@/lib/hooks/useSubtopics'
 import { useClientInteractions } from '@/lib/hooks/useClientInteractions'
-import { updateClient } from '@/lib/services/clients.service'
+import { useIntakeLeads } from '@/lib/hooks/useIntakeLeads'
+import { getClient, updateClient } from '@/lib/services/clients.service'
+import type { IntakeLead } from '@/lib/services/intakeLeads.service'
 import { Avatar, Btn, BottomSheet, Input, Label, Select, SectionTitle, Textarea } from '@/components/ui'
 import ClientModal from '@/components/modals/ClientModal'
 import ClientDetailView from '@/components/ClientDetailView'
@@ -397,6 +399,7 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
   const [subtopicName, setSubtopicName] = useState('')
   const [showAddSubtopic, setShowAddSubtopic] = useState(false)
   const { entries } = useHourEntries()
+  const { leads: pendingLeads, convert: convertLead, dismiss: dismissLead } = useIntakeLeads()
 
   const catalizar = clients.find(c => c.name === INTERNAL_CLIENT_ROOT_NAME)
   const { subtopics, addSubtopic, removeSubtopic } = useSubtopics(catalizar?.id ?? null)
@@ -447,6 +450,26 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
     if (!confirm('¿Eliminar este subtema?')) return
     try { await removeSubtopic(id); await onDataChange() } catch (error) {
       alert(`Error: ${(error as Error)?.message ?? 'error desconocido'}`)
+    }
+  }
+
+  async function handleConvertLead(lead: IntakeLead) {
+    try {
+      const clientId = await convertLead(lead)
+      await onDataChange()
+      const fresh = await getClient(clientId)
+      if (fresh) setSelectedClient(fresh)
+    } catch (error) {
+      alert(`No se pudo convertir: ${(error as Error)?.message ?? 'error desconocido'}`)
+    }
+  }
+
+  async function handleDismissLead(id: string) {
+    if (!confirm('¿Descartar esta respuesta de intake? No se puede recuperar desde la app.')) return
+    try {
+      await dismissLead(id)
+    } catch (error) {
+      alert(`No se pudo descartar: ${(error as Error)?.message ?? 'error desconocido'}`)
     }
   }
 
@@ -531,9 +554,41 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
                 {t.count}
               </span>
             )}
+            {t.id === 'potenciales' && pendingLeads.length > 0 && (
+              <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-amber-500 align-middle" />
+            )}
           </button>
         ))}
       </div>
+
+      {/* Bandeja de respuestas de /intake sin convertir */}
+      {clientTab === 'potenciales' && pendingLeads.length > 0 && (
+        <div className="mb-3">
+          <SectionTitle>Respuestas de intake sin revisar ({pendingLeads.length})</SectionTitle>
+          {pendingLeads.map(lead => (
+            <div key={lead.id} className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-stone-800 truncate">{lead.empresa}</p>
+                  <p className="text-xs text-stone-500 truncate">
+                    {lead.contactoNombre}{lead.contactoPosicion ? ` · ${lead.contactoPosicion}` : ''}
+                  </p>
+                </div>
+                {lead.leadRef && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white text-stone-500 border border-stone-200 flex-shrink-0">
+                    {lead.leadRef}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-600 mt-2 line-clamp-2">{lead.necesidad}</p>
+              <div className="flex gap-2 mt-3">
+                <Btn onClick={() => handleConvertLead(lead)} className="flex-1">Convertir en potencial</Btn>
+                <Btn variant="ghost" onClick={() => handleDismissLead(lead.id)} className="flex-1">Descartar</Btn>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Lista */}
       <div className="mb-3">
