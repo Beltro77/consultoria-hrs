@@ -34,7 +34,7 @@ export interface IntakeLeadInput {
   sitioWeb?: string
   direccion?: string
   cantidadSucursales?: string
-  cantidadPersonal?: number
+  cantidadPersonal?: string
   plazoProyecto?: string
   necesidad: string
   observaciones?: string
@@ -52,7 +52,7 @@ export interface IntakeLead {
   sitioWeb?: string
   direccion?: string
   cantidadSucursales?: string
-  cantidadPersonal?: number
+  cantidadPersonal?: string
   plazoProyecto?: string
   necesidad: string
   observaciones?: string
@@ -91,7 +91,7 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
     sitio_web:            input.sitioWeb?.trim() || null,
     direccion:            input.direccion?.trim() || null,
     cantidad_sucursales:  input.cantidadSucursales || null,
-    cantidad_personal:    input.cantidadPersonal ?? null,
+    cantidad_personal:    input.cantidadPersonal || null,
     plazo_proyecto:       input.plazoProyecto?.trim() || null,
     necesidad:            input.necesidad.trim(),
     observaciones:        input.observaciones?.trim() || null,
@@ -138,7 +138,7 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
     lead.plazoProyecto && `Plazo estimado: ${lead.plazoProyecto}`,
     lead.direccion && `Dirección: ${lead.direccion}`,
     lead.cantidadSucursales && `Sucursales: ${lead.cantidadSucursales}`,
-    lead.cantidadPersonal != null && `Personal: ${lead.cantidadPersonal}`,
+    lead.cantidadPersonal && `Personal: ${lead.cantidadPersonal}`,
     lead.observaciones && `Observaciones: ${lead.observaciones}`,
     lead.latitud != null && lead.longitud != null &&
       `Ubicación (GPS): https://maps.google.com/?q=${lead.latitud},${lead.longitud}`,
