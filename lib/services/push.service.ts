@@ -52,3 +52,16 @@ export async function getPushSubscriptionStatus(): Promise<NotificationPermissio
   if (!isPushSupported()) return 'unsupported'
   return Notification.permission
 }
+
+// Se llama sola al entrar al dashboard: si nunca se pidió el permiso, lo pide
+// (dispara el prompt del navegador); si ya estaba concedido, revalida/renueva
+// la suscripción en silencio (sin mostrar nada). Nunca lanza: solo loguea.
+export async function ensurePushSubscription(): Promise<void> {
+  if (!isPushSupported()) return
+  if (Notification.permission === 'denied') return
+  try {
+    await subscribeToPush()
+  } catch (e) {
+    console.error('No se pudo activar el push automáticamente:', e)
+  }
+}
