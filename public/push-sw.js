@@ -1,6 +1,17 @@
 // Service worker mínimo solo para Web Push (no es un PWA instalable:
 // no hay manifest.json vinculado, así que no dispara el prompt de instalación).
 
+// Fuerza que este SW pase a controlar la página de inmediato. Sin esto, un
+// dispositivo que ya tenía el service worker viejo de la PWA (de antes de
+// desactivarla) lo deja "esperando" para siempre y nunca llegan los push.
+self.addEventListener('install', () => {
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 self.addEventListener('push', (event) => {
   let data = {}
   try { data = event.data ? event.data.json() : {} } catch { /* payload no era JSON */ }
