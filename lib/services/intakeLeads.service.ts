@@ -111,12 +111,18 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
     throw error
   }
 
-  // Aviso push al equipo. Nunca debe romper el submit del prospecto si falla.
-  fetch('/api/notify-lead', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ empresa: payload.empresa, contactoNombre: payload.contacto_nombre }),
-  }).catch(err => console.error('Error notificando nuevo lead:', err))
+  // Aviso push al equipo. Se espera (sin romper el submit si falla) para que
+  // el pedido no quede a mitad de camino si el prospecto cierra la pestaña
+  // apenas ve la pantalla de "gracias".
+  try {
+    await fetch('/api/notify-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empresa: payload.empresa, contactoNombre: payload.contacto_nombre }),
+    })
+  } catch (err) {
+    console.error('Error notificando nuevo lead:', err)
+  }
 }
 
 export async function listPendingIntakeLeads(): Promise<IntakeLead[]> {

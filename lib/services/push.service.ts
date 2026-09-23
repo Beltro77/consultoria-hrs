@@ -22,6 +22,16 @@ export async function subscribeToPush(): Promise<void> {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error('Permiso de notificaciones denegado')
 
+  // Si el dispositivo tenía el service worker viejo de la PWA (de antes de
+  // desactivarla), sacarlo de encima: si no, puede quedar activo y bloquear
+  // a push-sw.js, y entonces el push nunca llega aunque la suscripción exista.
+  const existing = await navigator.serviceWorker.getRegistrations()
+  await Promise.all(
+    existing
+      .filter(r => !r.active?.scriptURL.endsWith('/push-sw.js'))
+      .map(r => r.unregister()),
+  )
+
   const registration = await navigator.serviceWorker.register('/push-sw.js')
   await navigator.serviceWorker.ready
 
