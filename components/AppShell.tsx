@@ -16,6 +16,7 @@ import ProjectDetailView from '@/components/iso/ProjectDetailView'
 import ClientPortal from '@/components/iso/ClientPortal'
 import MemberPortal from '@/components/iso/MemberPortal'
 import { Btn, Input, Label } from '@/components/ui'
+import { isPushSupported, subscribeToPush } from '@/lib/services/push.service'
 
 type Tab = 'calendario' | 'dashboard' | 'historial' | 'clientes' | 'ideas' | 'proyectos'
 type UserRole = 'consultant' | 'client' | 'member'
@@ -99,6 +100,41 @@ function LoginScreen({ onSignedIn }: { onSignedIn: (session: Session | null) => 
   )
 }
 
+// ─── Notificaciones push ──────────────────────────────────────
+
+function NotificationsButton() {
+  const [status, setStatus] = useState<NotificationPermission | 'unsupported' | 'loading'>('loading')
+
+  useEffect(() => {
+    if (!isPushSupported()) { setStatus('unsupported'); return }
+    setStatus(Notification.permission)
+  }, [])
+
+  async function handleClick() {
+    setStatus('loading')
+    try {
+      await subscribeToPush()
+      setStatus('granted')
+    } catch (e) {
+      console.error('Error activando notificaciones:', e)
+      setStatus(Notification.permission)
+    }
+  }
+
+  if (status === 'unsupported' || status === 'granted') return null
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading' || status === 'denied'}
+      className="text-[11px] uppercase tracking-[0.2em] text-accent-dark hover:text-stone-700 disabled:text-stone-300 disabled:cursor-not-allowed"
+      title={status === 'denied' ? 'Bloqueaste las notificaciones en el navegador' : undefined}
+    >
+      {status === 'loading' ? '...' : status === 'denied' ? 'Avisos bloqueados' : '🔔 Activar avisos'}
+    </button>
+  )
+}
+
 // ─── Consultant app ──────────────────────────────────────────
 
 function ConsultantApp() {
@@ -142,12 +178,15 @@ function ConsultantApp() {
             <h1 className="text-[18px] font-medium text-stone-800">Consultoria hrs</h1>
             <p className="text-xs text-stone-400 capitalize mt-0.5">{today}</p>
           </div>
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="text-[11px] uppercase tracking-[0.2em] text-stone-500 hover:text-stone-700"
-          >
-            Cerrar sesión
-          </button>
+          <div className="flex items-center gap-3">
+            <NotificationsButton />
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="text-[11px] uppercase tracking-[0.2em] text-stone-500 hover:text-stone-700"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </header>
 
