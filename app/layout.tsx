@@ -8,8 +8,6 @@ export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL) : undefined,
   title: 'Consultoría Hrs',
   description: 'Seguimiento de horas y tareas de consultoría',
-  manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Consultoría Hrs' },
 }
 
 export const viewport: Viewport = {
