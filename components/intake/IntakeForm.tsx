@@ -42,6 +42,8 @@ const RANGO_OPTIONS = [
 // Acepta con o sin protocolo (ej: "catalizar.com.ar" o "https://catalizar.com.ar").
 const URL_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function normalizeUrl(value: string): string {
   const trimmed = value.trim()
   if (!trimmed) return ''
@@ -84,6 +86,7 @@ function ThankYou() {
 export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
   const [empresa, setEmpresa] = useState('')
   const [contactoNombre, setContactoNombre] = useState('')
+  const [contactoEmail, setContactoEmail] = useState('')
   const [contactoPosicion, setContactoPosicion] = useState('')
   const [sitioWeb, setSitioWeb] = useState('')
   const [direccion, setDireccion] = useState('')
@@ -122,8 +125,12 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
 
   async function handleSubmit() {
     if (loading) return
-    if (!empresa.trim() || !contactoNombre.trim() || !necesidad.trim()) {
-      setError('Completá empresa, tu nombre y contanos qué necesitás.')
+    if (!empresa.trim() || !contactoNombre.trim() || !contactoEmail.trim() || !necesidad.trim()) {
+      setError('Completá empresa, tu nombre, tu email y contanos qué necesitás.')
+      return
+    }
+    if (!EMAIL_RE.test(contactoEmail.trim())) {
+      setError('Revisá tu email, no parece válido.')
       return
     }
     if (sitioWeb.trim() && !URL_RE.test(sitioWeb.trim())) {
@@ -137,6 +144,7 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
       await submitIntakeLead({
         empresa,
         contactoNombre,
+        contactoEmail,
         contactoPosicion,
         sitioWeb: normalizeUrl(sitioWeb),
         direccion,
@@ -179,6 +187,9 @@ export default function IntakeForm({ leadRef }: { leadRef: string | null }) {
 
           <Label>Tu nombre *</Label>
           <Input value={contactoNombre} onChange={e => setContactoNombre(e.target.value)} placeholder="Nombre y apellido" autoComplete="name" />
+
+          <Label>Tu email *</Label>
+          <Input type="email" value={contactoEmail} onChange={e => setContactoEmail(e.target.value)} placeholder="vos@tuempresa.com" autoComplete="email" autoCapitalize="none" autoCorrect="off" />
 
           <Label>Tu cargo</Label>
           <Select value={contactoPosicion} onChange={e => setContactoPosicion(e.target.value)}>

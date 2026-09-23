@@ -30,6 +30,7 @@ const NECESIDAD_TO_SERVICE_CATEGORY: Record<string, ClientServiceCategory> = {
 export interface IntakeLeadInput {
   empresa: string
   contactoNombre: string
+  contactoEmail: string
   contactoPosicion?: string
   sitioWeb?: string
   direccion?: string
@@ -48,6 +49,7 @@ export interface IntakeLead {
   createdAt: string
   empresa: string
   contactoNombre: string
+  contactoEmail?: string
   contactoPosicion?: string
   sitioWeb?: string
   direccion?: string
@@ -68,6 +70,7 @@ function mapIntakeLead(row: any): IntakeLead {
     createdAt:          row.created_at,
     empresa:            row.empresa,
     contactoNombre:     row.contacto_nombre,
+    contactoEmail:      row.contacto_email ?? undefined,
     contactoPosicion:   row.contacto_posicion ?? undefined,
     sitioWeb:           row.sitio_web ?? undefined,
     direccion:          row.direccion ?? undefined,
@@ -87,6 +90,7 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
   const payload = {
     empresa:              input.empresa.trim(),
     contacto_nombre:      input.contactoNombre.trim(),
+    contacto_email:       input.contactoEmail.trim(),
     contacto_posicion:    input.contactoPosicion?.trim() || null,
     sitio_web:            input.sitioWeb?.trim() || null,
     direccion:            input.direccion?.trim() || null,
@@ -160,6 +164,7 @@ export async function convertIntakeLeadToClient(lead: IntakeLead): Promise<strin
   const clientId = await createClientFromLead({
     name: lead.empresa,
     contactName: lead.contactoNombre,
+    contactEmail: lead.contactoEmail,
     contactPosition: lead.contactoPosicion,
     website: lead.sitioWeb,
     serviceCategory: NECESIDAD_TO_SERVICE_CATEGORY[lead.necesidad],
