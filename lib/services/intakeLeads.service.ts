@@ -106,6 +106,13 @@ export async function submitIntakeLead(input: IntakeLeadInput): Promise<void> {
     console.error('Error submitting intake lead:', error)
     throw error
   }
+
+  // Aviso push al equipo. Nunca debe romper el submit del prospecto si falla.
+  fetch('/api/notify-lead', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ empresa: payload.empresa, contactoNombre: payload.contacto_nombre }),
+  }).catch(err => console.error('Error notificando nuevo lead:', err))
 }
 
 export async function listPendingIntakeLeads(): Promise<IntakeLead[]> {
