@@ -573,6 +573,9 @@ export default function ClientesView({ clients, onDataChange, onDeleteClient }: 
                   <p className="text-xs text-stone-500 truncate">
                     {lead.contactoNombre}{lead.contactoPosicion ? ` · ${lead.contactoPosicion}` : ''}
                   </p>
+                  {lead.contactoEmail && (
+                    <p className="text-xs text-accent-dark truncate">{lead.contactoEmail}</p>
+                  )}
                 </div>
                 {lead.leadRef && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white text-stone-500 border border-stone-200 flex-shrink-0">

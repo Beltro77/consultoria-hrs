@@ -102,6 +102,7 @@ export async function createClientFromLead(input: {
   name: string
   contactName?: string
   contactPosition?: string
+  contactEmail?: string
   website?: string
   serviceCategory?: ClientServiceCategory
   description?: string
@@ -118,6 +119,7 @@ export async function createClientFromLead(input: {
       status: 'lead',
       contact_name: input.contactName ?? null,
       contact_position: input.contactPosition ?? null,
+      contact_email: input.contactEmail ?? null,
       website: input.website ?? null,
       service_category: input.serviceCategory ?? null,
       description: input.description ?? null,
