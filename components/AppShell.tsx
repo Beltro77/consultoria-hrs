@@ -16,7 +16,7 @@ import ProjectDetailView from '@/components/iso/ProjectDetailView'
 import ClientPortal from '@/components/iso/ClientPortal'
 import MemberPortal from '@/components/iso/MemberPortal'
 import { Btn, Input, Label } from '@/components/ui'
-import { isPushSupported, subscribeToPush } from '@/lib/services/push.service'
+import { isPushSupported, subscribeToPush, ensurePushSubscription } from '@/lib/services/push.service'
 
 type Tab = 'calendario' | 'dashboard' | 'historial' | 'clientes' | 'ideas' | 'proyectos'
 type UserRole = 'consultant' | 'client' | 'member'
@@ -105,9 +105,14 @@ function LoginScreen({ onSignedIn }: { onSignedIn: (session: Session | null) => 
 function NotificationsButton() {
   const [status, setStatus] = useState<NotificationPermission | 'unsupported' | 'loading'>('loading')
 
+  // Al entrar al dashboard: si nunca se contestó el permiso, lo pedimos solos
+  // (sin esperar un click). Si ya estaba concedido, revalida/renueva la
+  // suscripción en silencio. Solo si eso falla queda el botón para reintentar.
   useEffect(() => {
     if (!isPushSupported()) { setStatus('unsupported'); return }
-    setStatus(Notification.permission)
+    if (Notification.permission !== 'default') { setStatus(Notification.permission); return }
+    setStatus('loading')
+    ensurePushSubscription().finally(() => setStatus(Notification.permission))
   }, [])
 
   async function handleClick() {
@@ -121,16 +126,16 @@ function NotificationsButton() {
     }
   }
 
-  if (status === 'unsupported' || status === 'granted') return null
+  if (status === 'unsupported' || status === 'granted' || status === 'loading') return null
 
   return (
     <button
       onClick={handleClick}
-      disabled={status === 'loading' || status === 'denied'}
+      disabled={status === 'denied'}
       className="text-[11px] uppercase tracking-[0.2em] text-accent-dark hover:text-stone-700 disabled:text-stone-300 disabled:cursor-not-allowed"
       title={status === 'denied' ? 'Bloqueaste las notificaciones en el navegador' : undefined}
     >
-      {status === 'loading' ? '...' : status === 'denied' ? 'Avisos bloqueados' : '🔔 Activar avisos'}
+      {status === 'denied' ? 'Avisos bloqueados' : '🔔 Activar avisos'}
     </button>
   )
 }
