@@ -45,7 +45,13 @@ function LoginScreen({ onSignedIn }: { onSignedIn: (session: Session | null) => 
     setError('')
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (error) {
+      // AuthRetryableFetchError = el navegador no llegó a Supabase (red, bloqueador, SW viejo).
+      setError(error.name === 'AuthRetryableFetchError'
+        ? 'No se pudo conectar con el servidor. Revisá tu conexión y recargá la página.'
+        : error.message)
+      return
+    }
     onSignedIn(data.session)
   }
 
