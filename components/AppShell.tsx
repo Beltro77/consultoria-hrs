@@ -234,48 +234,58 @@ function ConsultantApp() {
   )
 }
 
-// ─── Inactivity timeout ───────────────────────────────────────
+// ─── Session max age ──────────────────────────────────────────
 
-const INACTIVITY_MS = 5 * 60 * 1000 // 5 minutos
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 días
+const LOGIN_AT_KEY = 'chrs_login_at'
 
-function useInactivityLogout() {
+// La sesión dura 30 días desde el login, sin importar la actividad.
+// Supabase renueva el token solo; acá solo forzamos el re-login al vencer.
+function useSessionMaxAge() {
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
-    let lastActivity = Date.now()
-
-    function reset() {
-      lastActivity = Date.now()
-      clearTimeout(timer)
-      timer = setTimeout(() => supabase.auth.signOut(), INACTIVITY_MS)
-    }
-
-    // Al volver al tab/app, verificar si realmente pasaron 5 min de inactividad real.
-    // Evita logout falso cuando el dispositivo suspende el timer.
-    function onVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        if (Date.now() - lastActivity >= INACTIVITY_MS) {
-          supabase.auth.signOut()
-        } else {
-          reset()
-        }
+    function readLoginAt(): number | null {
+      try {
+        const v = Number(localStorage.getItem(LOGIN_AT_KEY))
+        return Number.isFinite(v) && v > 0 ? v : null
+      } catch {
+        return null
       }
     }
 
-    const events = [
-      'mousemove', 'mousedown', 'mouseup',
-      'keydown', 'keypress', 'input',
-      'touchstart', 'touchmove', 'touchend',
-      'pointerdown', 'pointermove',
-      'scroll', 'wheel', 'click',
-    ] as const
-    events.forEach(e => window.addEventListener(e, reset, { passive: true }))
+    // Primera vez con sesión activa (o sesión previa a este cambio): arranca el conteo.
+    if (readLoginAt() === null) {
+      try { localStorage.setItem(LOGIN_AT_KEY, String(Date.now())) } catch { /* storage bloqueado */ }
+    }
+
+    function check() {
+      const loginAt = readLoginAt()
+      if (loginAt !== null && Date.now() - loginAt >= SESSION_MAX_AGE_MS) {
+        // scope local: borra la sesión del dispositivo aunque no haya red
+        // (el signOut global falla offline y deja la sesión viva).
+        supabase.auth.signOut({ scope: 'local' })
+      }
+    }
+
+    // setTimeout no admite 30 días (tope ~24,8), así que chequeamos al volver
+    // a la app y cada hora mientras está abierta.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') check()
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        try { localStorage.removeItem(LOGIN_AT_KEY) } catch { /* storage bloqueado */ }
+      }
+    })
+
+    check()
+    const interval = setInterval(check, 60 * 60 * 1000)
     document.addEventListener('visibilitychange', onVisibilityChange)
-    reset()
 
     return () => {
-      clearTimeout(timer)
-      events.forEach(e => window.removeEventListener(e, reset))
+      clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      subscription.unsubscribe()
     }
   }, [])
 }
@@ -286,7 +296,7 @@ function RoleRouter({ session }: { session: Session }) {
   const [role, setRole]     = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useInactivityLogout()
+  useSessionMaxAge()
 
   useEffect(() => {
     async function detect() {
